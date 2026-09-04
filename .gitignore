@@ -30,6 +30,14 @@ reports/
 *.engine
 weights/
 
+# ---- scratch ----
+# Accidental saves and working copies of the deck. The tracked submission
+# artefacts are deck/SIH2026_PS26126_Idea_Presentation.pptx and .pdf; anything
+# else at the root is scratch.
+/*.pptx
+/*.pdf
+/*.docx
+
 # ---- editors / OS ----
 .vscode/
 .idea/

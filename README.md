@@ -1,9 +1,7 @@
-# DRISHTI-UGV
+# SIH 2026 — Problem Statement 26126
 
-Vision-first autonomous navigation for an outdoor Unmanned Ground Vehicle in
-GPS-denied environments.
-
-**Smart India Hackathon 2026 · Problem Statement 26126 · Bharat Electronics Limited**
+Smart India Hackathon 2026 entry by **Team The Vikings** (SIH 2025 Grand Finale
+finalists).
 
 | | |
 |---|---|
@@ -13,85 +11,89 @@ GPS-denied environments.
 | Category | **Software** |
 | Theme | Smart Automation |
 | Idea submission deadline | **30 September 2026** |
-| Team | The Vikings |
+
+Build an autonomous navigation system for a UGV operating in a **GPS-denied
+outdoor environment using camera feeds as the primary sensor** — path
+detection, visual localisation, and dynamic collision avoidance.
+
+Our answer is **DRISHTI-UGV**: a ROS 2 module that scores terrain rather than
+merely marking it occupied, localises visually without GPS, and puts a small
+deterministic safety supervisor — not a neural network — in charge of the stop
+decision.
 
 ---
 
-## What this is
+## Layout
 
-A ROS 2 software module that drives a UGV from Point A to Point B across
-unstructured outdoor terrain using cameras as the primary sensor, with **no
-reliance on GPS**.
+```
+.
+├── drishti-ugv/     the project: requirements, spec, backlog, evaluation
+├── deck/            SIH idea submission and the generator that builds it
+└── source/          upstream source material (blueprint, official template)
+```
 
-The system is deliberately a *hybrid*: mature open-source robotics carries the
-infrastructure (SLAM, elevation mapping, navigation), and our engineering
-concentrates on the three places where this problem is genuinely specific —
+### `drishti-ugv/` — the project
 
-1. **the camera-to-traversability bridge** — turning vision geometry and
-   semantics into a driving cost, not a binary occupancy grid;
-2. **the safety supervisor** — a small deterministic module, outside the neural
-   network, that owns the stop decision;
-3. **the evaluation harness** — mission-level metrics scored automatically
-   against simulator ground truth.
+Start at [drishti-ugv/README.md](drishti-ugv/README.md). Nine documents:
+[PRD](drishti-ugv/PRD.md) ·
+[SPEC](drishti-ugv/SPEC.md) ·
+[SETUP](drishti-ugv/SETUP.md) ·
+[TASK](drishti-ugv/TASK.md) ·
+[EVALUATION](drishti-ugv/EVALUATION.md) ·
+[REFERENCES](drishti-ugv/REFERENCES.md) ·
+[STATUS](drishti-ugv/STATUS.md) ·
+[CLAUDE](drishti-ugv/CLAUDE.md)
 
-### Core principle
+`SPEC.md` is the contract every node is written against. `STATUS.md` is the
+handover document — read it to find out where things actually stand.
 
-> The neural network only answers *"what am I looking at?"*.
-> Coordinate transforms, mapping, planning, control and the stop decision stay
-> in deterministic, auditable code — so a perception failure degrades into a
-> safe halt, never a collision.
+**No source code yet.** Phase 0 (environment bring-up) is the next action.
+
+### `deck/` — the submission
+
+Six slides on the official SIH 2026 template, generated rather than
+hand-edited, so it re-exports cleanly whenever team details change.
+
+```bash
+cd deck && python build_deck.py
+```
+
+Reads `source/SIH2026-IDEA-Presentation-Format.pptx`, writes
+`SIH2026_PS26126_Idea_Presentation.pptx`. Team name and Team ID are constants
+at the top of the script.
+
+`prep_logos.py` re-fetches and normalises the technology logos into
+`assets/logos/` — only needed to add a logo or refresh a source.
+
+> **The portal accepts PDF only.** Export from PowerPoint after any edit; the
+> committed PDF is the upload artefact.
+
+### `source/` — upstream material
+
+The BEL research blueprint (architecture baseline, information cutoff
+4 September 2026) and the unmodified official SIH 2026 idea template.
 
 ---
 
-## Documents
+## Outstanding
 
-Read them in this order.
-
-| File | What it answers |
+| Item | Blocks |
 |---|---|
-| [PRD.md](PRD.md) | What we are building and why; requirements and success criteria |
-| [SPEC.md](SPEC.md) | How it is built: architecture, interfaces, algorithms, budgets |
-| [SETUP.md](SETUP.md) | Machine requirements and the exact install order |
-| [TASK.md](TASK.md) | The phased backlog — what to do next, with acceptance criteria |
-| [EVALUATION.md](EVALUATION.md) | Metrics, the test scenario catalog, how we score ourselves |
-| [REFERENCES.md](REFERENCES.md) | Upstream repositories, licences, official documentation |
-| [STATUS.md](STATUS.md) | Living state of the project and the decision log |
-| [CLAUDE.md](CLAUDE.md) | Working agreement for AI agents and contributors in this repo |
+| **Team ID** from the SIH portal | Title slide of the submission |
+| Workstation GPU confirmation against the Isaac Sim floor | Phase 0 simulator choice |
+| Upload the PDF to the portal | **Due 30 September 2026** |
+
+Tracked in [drishti-ugv/STATUS.md](drishti-ugv/STATUS.md).
 
 ---
 
-## Current state
+## A note on the numbers
 
-**Pre-implementation.** No code has been written yet. The research baseline,
-the architecture and the SIH idea submission deck are complete; Phase 0
-(environment bring-up) is the next action. See [STATUS.md](STATUS.md).
+Every performance figure in the deck and the docs is a stated engineering
+*target* with a defined measurement method, not a claim about what the software
+already does — and not a claim of "100% accuracy", which no outdoor autonomy
+stack can honestly make. See
+[drishti-ugv/EVALUATION.md](drishti-ugv/EVALUATION.md).
 
----
-
-## Stack
-
-| Layer | Choice | Fallback |
-|---|---|---|
-| OS | Ubuntu 24.04 | — |
-| Middleware | ROS 2 Jazzy | ROS 2 Humble |
-| Simulator | NVIDIA Isaac Sim 6.x | Gazebo Harmonic |
-| Localisation | RTAB-Map (stereo + IMU) | ORB-SLAM3 (offline benchmark only) |
-| Terrain | `elevation_mapping_cupy` | custom grid map |
-| Navigation | Nav2 + MPPI controller | Nav2 + RPP / DWB |
-| Perception | YOLO detection + segmentation, stereo/RGB-D depth | Depth Anything V2 Small |
-| Safety | custom deterministic supervisor | — |
-
-Languages: **Python** (perception, tooling, evaluation) and **C++** (real-time
-nodes, costmap layers, safety supervisor).
-
----
-
-## Source material
-
-This repository is derived from `BEL_26126_Vision_Based_Autonomous_UGV_Technical_Blueprint.docx`
-(the research and architecture baseline, information cutoff 4 September 2026)
-and from the problem statement text published on `sih.gov.in`.
-
-Software versions, compatibility and licence terms move. Anything quoted from
-the blueprint is marked with its as-of date and **must be re-verified against
-upstream before it is relied on**.
+Version and licence facts quoted from the blueprint are stamped with their
+as-of date and must be re-verified upstream before they are relied on.

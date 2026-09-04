@@ -98,13 +98,15 @@ Retrieved 4 September 2026.
 
 ## 6. Internal source material
 
+Paths are relative to the repository root, one level above this document.
+
 | Document | Role |
 |---|---|
-| `BEL_26126_Vision_Based_Autonomous_UGV_Technical_Blueprint.docx` | Research and architecture baseline; information cutoff 4 September 2026 |
-| `SIH2026_PS26126_Idea_Presentation.pptx` / `.pdf` | Idea submission deck built on the official template |
-| `build_deck.py`, `prep_logos.py` | Deck generator and logo preparation |
-
-Both live in the parent directory of this repository.
+| `source/BEL_26126_Vision_Based_Autonomous_UGV_Technical_Blueprint.docx` | Research and architecture baseline; information cutoff 4 September 2026 |
+| `source/SIH2026-IDEA-Presentation-Format.pptx` | Unmodified official SIH 2026 idea template |
+| `deck/SIH2026_PS26126_Idea_Presentation.pptx` / `.pdf` | Idea submission deck built on that template |
+| `deck/build_deck.py` | Deck generator — regenerates the deck from the template |
+| `deck/prep_logos.py` | Fetches and normalises the technology logos |
 
 ### 6.1 Logo attribution
 
