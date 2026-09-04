@@ -1,0 +1,39 @@
+# ---- colcon / ROS 2 workspace ----
+build/
+install/
+log/
+.colcon/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# ---- experiment artefacts ----
+# Recordings and reports are large and regenerable. Keep the scenario
+# definitions, seeds and parameter sets in git; keep the outputs out.
+bags/
+*.db3
+*.mcap
+results/
+reports/
+
+# ---- model weights ----
+# Pull from source at setup time; never vendor. Licences differ per weight
+# file (see REFERENCES.md section 3).
+*.pt
+*.pth
+*.onnx
+*.engine
+weights/
+
+# ---- editors / OS ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
