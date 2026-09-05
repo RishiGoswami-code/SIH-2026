@@ -13,22 +13,27 @@ with no GPS. Mature open source carries the infrastructure (RTAB-Map for
 visual SLAM, `elevation_mapping_cupy` for terrain, Nav2 for planning and
 control); our own code is the camera-to-traversability fusion layer, a
 deterministic safety supervisor, and the evaluation harness. Development is
-simulation-first in NVIDIA Isaac Sim. Built for SIH 2026 Problem Statement
+simulation-first in Gazebo Harmonic. Built for SIH 2026 Problem Statement
 26126 (Bharat Electronics Limited).
 
 ---
 
 ## Current state — read this first
 
-**Phase 0, partially blocked.** `ugv_ws/` now exists with two packages —
-`drishti_msgs` and `drishti_bringup` — but **it has never been built.** No
-machine on the project has ROS 2 installed. The manifests, message definitions
-and params file are syntax-checked only.
+**Phase 0, unblocked, nothing installed yet.** `ugv_ws/` exists with three
+packages — `drishti_msgs`, `drishti_bringup`, `drishti_safety` — but **it has
+never been built.** No machine on the project has ROS 2 installed yet. The
+manifests, message definitions, params file, ROS node and launch file are
+syntax-checked only.
 
-The blocker is hardware: the development machine has no NVIDIA GPU, so neither
-Isaac Sim nor `elevation_mapping_cupy` can run on it at all. See
-[STATUS.md](STATUS.md) **B3** — read it before planning any work that assumes a
-GPU.
+The one exception is the safety supervisor's decision core, which is ROS-free
+by design and **is** compiled and tested — 377 checks, clean under `-Werror`.
+
+Hardware settled on 6 Sep 2026: development moves to a **Lenovo LOQ with an
+RTX 3050**. The simulator is **Gazebo Harmonic**, not Isaac Sim — 4-6 GB VRAM
+against a 16 GB floor (STATUS.md D15). CUDA is available, so
+`elevation_mapping_cupy` stays on the primary path (D16). Nothing above the
+simulator changed.
 
 Consequences:
 
@@ -207,7 +212,7 @@ A change is done when:
 ## Working style
 
 - **Verify against upstream, do not recall.** ROS 2, Nav2, RTAB-Map,
-  `elevation_mapping_cupy` and Isaac Sim all move. Version-specific details in
+  `elevation_mapping_cupy` and Gazebo all move. Version-specific details in
   these documents are marked with an as-of date; re-check them before relying
   on them. This applies especially to the `Twist` vs `TwistStamped` question
   in SPEC.md §4.3 and to every licence claim.

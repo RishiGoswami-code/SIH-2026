@@ -48,6 +48,25 @@ SPEC.md §4.
 
 Do not spend days fighting a marginal GPU. Decide, record, move.
 
+### 1.3 Decision taken — 6 September 2026
+
+**Simulator: Gazebo Harmonic.** The development machine is a **Lenovo LOQ with
+an RTX 3050 laptop GPU** (4–6 GB VRAM). Isaac Sim's published minimum is an RTX
+4080 with 16 GB VRAM and 32 GB RAM, re-verified against NVIDIA's live
+requirements page on this date. The rule in §1.2 applies without argument.
+
+The RTX 3050 does clear Isaac Sim's one *hard* gate — it has RT cores — so
+Isaac Sim would start. That is precisely the trap §1.2 warns about: it fails on
+scene complexity and sensor count rather than at launch, so the wasted time is
+discovered late. Isaac Sim stays available for offline synthetic-data
+generation on small scenes; it is not the development loop.
+
+The machine does have **CUDA**, which the previously audited laptop did not.
+`elevation_mapping_cupy` is therefore back on the primary path (STATUS.md D16),
+and local YOLO inference and light fine-tuning are feasible within 4–6 GB.
+
+Recorded as D15 and D16 in STATUS.md.
+
 ---
 
 ## 2. Software

@@ -12,17 +12,20 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 
 | | |
 |---|---|
-| **Phase** | Phase 0 — started, **partially blocked** |
-| **Last updated** | 5 September 2026 |
-| **Next action** | Decide the compute path — **B3**. Nothing else in Phase 0 can proceed. |
+| **Phase** | Phase 0 — **unblocked**, ready to install |
+| **Last updated** | 6 September 2026 |
+| **Next action** | On the Lenovo LOQ: Ubuntu 24.04 + ROS 2 Jazzy + Gazebo Harmonic, then `colcon build` |
 | **Hard deadline** | **30 September 2026** — SIH idea submission |
-| **Blocked on** | Compute (B3, hard), Team ID (B1, submission only) |
+| **Blocked on** | Team ID (B1, submission only) |
 
-> **The development machine cannot run the specified stack.** The GPU audit
-> that closed Q2 came back negative on every axis — no NVIDIA GPU at all. This
-> is the dominant fact about the project right now; see **B3** and
-> **Decision log D11**. The workspace skeleton has been written and
-> syntax-checked, but nothing has been built or run.
+> **B3 is closed.** A Lenovo LOQ with an RTX 3050 is available and becomes the
+> development machine. Two consequences (D15, D16): the simulator switches to
+> **Gazebo Harmonic**, because 4–6 GB VRAM is far below Isaac Sim's 16 GB floor;
+> and **`elevation_mapping_cupy` is viable again**, because the machine has
+> CUDA. D12 is reversed.
+>
+> The RTX 3050 clears the one gate that the previously audited machine failed
+> outright: it has RT cores. Nothing above the simulator changes.
 
 ---
 
@@ -44,30 +47,36 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 
 ## In progress
 
-**Phase 0**, tasks 6–7 of 9 done (workspace skeleton, shared config). Tasks 1–5
-and 8–9 need a machine that can run ROS 2 and a simulator, and are held behind
-**B3**.
+**Phase 0**, tasks 6–7 of 9 done (workspace skeleton, shared config). The
+install tasks are now unblocked and move to the Lenovo LOQ.
 
 Ahead of schedule, out of phase order (D14): the **safety supervisor decision
 core** is written and tested — 377 checks, clean under `-Werror`. Its ROS
 wrapper and launch file are written but **have never been compiled or run**.
 
-An NVIDIA laptop and an Apple-silicon laptop are reported available (5 Sep
-2026). **Neither has been audited.** The NVIDIA machine's exact GPU decides
-whether Isaac Sim is possible at all — a GTX part has no RT cores and fails the
-same way the current machine does. Apple silicon cannot run Isaac Sim under any
-configuration. Until the NVIDIA GPU model, VRAM and RAM are known, B3 stays
-open.
-
 ## Next actions
 
-1. **Decide the compute path — B3.** Cloud GPU, a team member's RTX machine, or
-   a CPU-only downgrade. This is the only thing that matters right now; every
-   remaining Phase 0 task depends on it, and the choice changes SPEC.md §2
-   (see D11).
-2. **Get the Team ID** from the SIH portal and fill it on the title slide (B1).
-3. Once B3 is decided: install ROS 2 Jazzy, build `ugv_ws`, and record the
-   exact toolchain versions in *Pinned versions* below.
+All on the **Lenovo LOQ (RTX 3050)**, which is now the development machine:
+
+1. Install **Ubuntu 24.04** and a current NVIDIA driver.
+2. Install **ROS 2 Jazzy**; verify `ros2 topic list` and a talker/listener pair.
+3. Install **Gazebo Harmonic** (not Isaac Sim — D15).
+4. `colcon build --symlink-install` on `ugv_ws`. **This is the first real build
+   of anything in this project.** Expect to fix rclcpp API details in
+   `safety_supervisor_node.cpp`, which has never been compiled.
+5. `ros2 launch drishti_bringup safety.launch.py` with nothing else running.
+   The supervisor should sit in STOP and publish zero velocity — that is the
+   correct behaviour and makes the fail-safe path observable on day one.
+6. Confirm the invariant on a live graph: `ros2 topic info /cmd_vel` must show
+   exactly one publisher.
+7. Record exact Ubuntu, driver, CUDA, ROS 2, Gazebo, Nav2 and RTAB-Map versions
+   in *Pinned versions* below.
+8. **Get the Team ID** from the SIH portal and fill it on the title slide (B1).
+
+Still unmeasured on the LOQ: exact VRAM (4 or 6 GB), system RAM and free disk.
+None of these change D15 — both VRAM variants sit far below the 16 GB Isaac Sim
+floor — but they do bound how large a Gazebo world and how heavy a perception
+model the machine will carry, so record them at step 1.
 
 ---
 
@@ -77,11 +86,15 @@ open.
 |---|---|---|---|---|
 | B1 | Team ID not yet available from the portal | Title slide of the submission | Team | 4 Sep 2026 |
 | ~~B2~~ | ~~Workstation GPU capability unconfirmed~~ — **closed 5 Sep 2026**, audit below. Superseded by B3. | — | — | — |
-| **B3** | **No machine available that can run the specified stack** | **All of Phase 0 except the skeleton; every later phase** | **Team** | **5 Sep 2026** |
+| ~~B3~~ | ~~No machine available that can run the specified stack~~ — **closed 6 Sep 2026.** A Lenovo LOQ with RTX 3050 is available; simulator switched to Gazebo Harmonic (D15), CUDA path restored (D16) | — | — | — |
 
-### B3 — the hardware audit
+**No open blockers on Phase 0.** B1 (Team ID) affects only the submission deck.
 
-Measured on the development machine, 5 September 2026:
+### B3 — the hardware audit (superseded, kept for the record)
+
+Measured on the **original** development machine, 5 September 2026. This
+machine is no longer the target; the Lenovo LOQ replaces it. Kept so the
+constraint is not re-litigated from memory if someone picks the laptop up again.
 
 | Requirement (SETUP.md §1 / Isaac Sim 6.0.1 minimum) | Required | Actual | |
 |---|---|---|---|
@@ -109,6 +122,36 @@ It does **not** cover 2 — that needs a CPU traversability layer built on
 `grid_map` instead, which is a real change to SPEC.md §6 and new work not
 currently in TASK.md.
 
+### The development machine, from 6 September 2026
+
+| | Lenovo LOQ | Isaac Sim minimum | Gazebo Harmonic |
+|---|---|---|---|
+| GPU | **RTX 3050 laptop** | RTX 4080 | — |
+| RT cores | **yes** | required | not required |
+| CUDA | **yes** | required | not required |
+| VRAM | 4–6 GB *(unconfirmed)* | 16 GB | comfortable |
+| RAM | *unconfirmed* | 32 GB | comfortable |
+
+Isaac Sim requirements re-verified against NVIDIA's live documentation on
+6 September 2026, not recalled: minimum RTX 4080, 16 GB VRAM, 32 GB RAM, 50 GB
+SSD, with the note that workloads "leveraging a large number of sensors are
+particularly affected" below the minimum specification.
+
+What changed, and what did not:
+
+- **Changed:** the machine now has RT cores and CUDA. Consequence 2 above
+  disappears — `elevation_mapping_cupy` is viable again (D16).
+- **Not changed:** VRAM and RAM remain far below the Isaac Sim floor, so the
+  simulator is Gazebo Harmonic (D15). The RTX 3050 would *launch* Isaac Sim,
+  which is the trap: it fails on scene complexity and sensor count rather than
+  at startup, so the cost is discovered late.
+- **Unaffected either way:** everything above the simulator. That is what the
+  SPEC.md §4 interface contract exists to guarantee.
+
+The Apple-silicon laptop cannot run Isaac Sim under any configuration and has
+no CUDA. It is usable for ROS 2 development, the ROS-free supervisor tests, and
+documentation — not for simulation or training.
+
 ---
 
 ## Decision log
@@ -131,6 +174,8 @@ Decisions with consequences. Append; do not rewrite history.
 | D12 | 5 Sep 2026 | **`elevation_mapping_cupy` is not viable on the current machine** and D4's "custom grid map fallback" is now the live path unless a CUDA GPU is obtained | CuPy requires CUDA; the audited machine has no NVIDIA GPU. This is a capability gap, not a tuning problem | Yes — reverts if an RTX machine or cloud GPU is secured |
 | D13 | 5 Sep 2026 | **SPEC.md §9.1 evaluation order corrected: all STOP conditions now precede the SLOW branch.** `command_not_finite` hoisted above the forwarding paths; `t_pose_stale`, `t_plan_stale`, `t_cmd_stale` added to §9.3; `/perception/nearest_obstacle` added to §4.2 | The original "first match wins" order forwarded a command whenever confidence was low — even with no valid path — so low confidence masked a harder fault. Reordering can only turn SLOW into STOP, never the reverse, so it cannot weaken the envelope. The extra thresholds close the same hole for the pose, plan and command streams | **No** — safety ordering |
 | D14 | 5 Sep 2026 | **Safety supervisor built during Phase 0, ahead of its Phase 5 slot** | A deliberate exception to the phase gates (D6), taken because the core is pure logic with no ROS or hardware dependency and was the one substantial component fully verifiable on a machine that cannot run the stack. The gate's purpose — stopping a model from masking a broken foundation — is not weakened: this component has no model in it. The ROS node it wraps remains uncompiled and unproven | Yes |
+| D15 | 6 Sep 2026 | **Gazebo Harmonic becomes the primary simulator; Isaac Sim held as contingent** | The development machine is a Lenovo LOQ with an RTX 3050 laptop GPU, 4–6 GB VRAM. NVIDIA's live requirements page (re-checked 6 Sep 2026) sets the Isaac Sim minimum at RTX 4080 / 16 GB VRAM / 32 GB RAM and warns that sensor-heavy workloads suffer below it — a stereo pair, depth and IMU over randomised terrain is precisely that. SETUP.md §1.2: decide, record, move | Yes — reverts if a qualifying GPU is obtained |
+| D16 | 6 Sep 2026 | **`elevation_mapping_cupy` restored as the terrain layer; D12 reversed** | The RTX 3050 provides CUDA, which the previously audited Intel Iris Xe did not. The CPU `grid_map` fallback is no longer forced — it returns to being a fallback | Yes |
 
 ---
 
@@ -154,7 +199,7 @@ being wrong costs rework — revisit them when the corresponding question closes
 Fill during Phase 0 and update on every deliberate upgrade. Empty rows are the
 honest state, not an oversight.
 
-**Still entirely empty as of 5 Sep 2026** — nothing is installed, because of
+**Still entirely empty as of 6 Sep 2026** — nothing is installed, because of
 B3. These rows get filled at the first successful `colcon build`, not before.
 
 ### Development machine, as audited 5 Sep 2026
@@ -178,8 +223,9 @@ Recorded so the constraint is not re-litigated from memory. See **B3**.
 | Ubuntu | | |
 | NVIDIA driver | | |
 | ROS 2 | | |
-| Isaac Sim | | |
+| Gazebo Harmonic | | |
 | CUDA | | |
+| CuPy | | |
 | Nav2 | | |
 | RTAB-Map | | |
 | `elevation_mapping_cupy` | | |

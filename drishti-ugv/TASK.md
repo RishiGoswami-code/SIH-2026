@@ -14,21 +14,21 @@ and a small team working in parallel where tasks are independent.
 ## Phase 0 — Environment · 1–2 days
 
 **Artefact:** a machine that builds and runs an empty ROS 2 workspace, with
-Isaac Sim verified, TF and clock health provable.
+the simulator verified, TF and clock health provable.
 
 - [ ] Install Ubuntu 24.04 and a matching NVIDIA driver
-- [ ] Confirm GPU meets the Isaac Sim floor — **decides Isaac Sim vs Gazebo** (SETUP.md §1)
+- [x] Confirm GPU meets the Isaac Sim floor — **decided: Gazebo Harmonic** (SETUP.md §1.3, D15)
 - [ ] Install ROS 2 Jazzy; verify `ros2 topic list` and a talker/listener pair
-- [ ] Install Isaac Sim 6.x; run the NVIDIA Compatibility Checker
-- [ ] Clone/install the Isaac Sim ROS 2 workspace; verify the ROS 2 bridge
-- [ ] Create the `colcon` workspace skeleton and `drishti_msgs` package
-- [ ] Add `config/` with a shared params file and `use_sim_time` set globally
-- [ ] Pin versions: record exact ROS 2, Isaac Sim, CUDA and driver versions in STATUS.md
+- [ ] Install Gazebo Harmonic and the `ros_gz` bridge packages for Jazzy
+- [ ] Verify the bridge: a Gazebo sensor topic reaches ROS 2 via `ros_gz_bridge`
+- [x] Create the `colcon` workspace skeleton and `drishti_msgs` package
+- [x] Add `config/` with a shared params file and `use_sim_time` set globally
+- [ ] Pin versions: record exact ROS 2, Gazebo, CUDA and driver versions in STATUS.md
 - [ ] Stand up `docker/` only if native dependencies conflict
 
 **Acceptance**
 - `colcon build` succeeds on a clean clone.
-- Isaac Sim publishes at least one ROS 2 topic that `ros2 topic echo` receives.
+- The simulator publishes at least one ROS 2 topic that `ros2 topic echo` receives.
 - `ros2 run tf2_tools view_frames` produces a tree with no duplicate publishers.
 - Every running node reports `use_sim_time: true`.
 
@@ -38,7 +38,7 @@ Isaac Sim verified, TF and clock health provable.
 
 ## Phase 1 — Simulated navigation · 2–4 days
 
-**Artefact:** a virtual UGV that drives to a goal in Isaac Sim using simulator
+**Artefact:** a virtual UGV that drives to a goal in Gazebo using simulator
 odometry and Nav2.
 
 - [ ] Build or import a simple UGV (differential/skid-steer) with a stereo camera and IMU
@@ -68,7 +68,7 @@ odometry and Nav2.
 - [ ] Install `rtabmap_ros`; configure for stereo + IMU
 - [ ] Establish `map → odom` from RTAB-Map only; remove any ground-truth pose from the graph
 - [ ] Verify loop closure on a revisited route
-- [ ] Log ground-truth pose from Isaac Sim alongside every bag
+- [ ] Log ground-truth pose from the simulator alongside every bag
 - [ ] Implement ATE/RPE computation in `drishti_eval`
 - [ ] Feed RTAB-Map pose into Nav2 and re-run the Phase 1 goal test
 - [ ] Record baseline drift on Easy and Medium worlds
@@ -117,7 +117,7 @@ odometry and Nav2.
 - [ ] Project semantics into the elevation map as semantic layers
 - [ ] Wire the `semantic` and `uncertainty` terms into the cost function
 - [ ] Measure perception latency against the ≤ 100 ms budget; apply TensorRT if needed
-- [ ] Generate synthetic training data from Isaac Sim **only if** failure analysis demands it
+- [ ] Generate synthetic training data **only if** failure analysis demands it (Isaac Sim is available offline for small scenes — D15)
 - [ ] Ablation: stereo depth vs Depth Anything V2 Small
 
 **Acceptance**

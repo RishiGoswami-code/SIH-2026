@@ -73,7 +73,7 @@ is the last thing between a planner command and the wheels.
 
 | Layer | Primary | Fallback | Decision rule |
 |---|---|---|---|
-| Simulator | Isaac Sim 6.x | Gazebo Harmonic | Isaac Sim if the GPU qualifies (SETUP.md §1) |
+| Simulator | **Gazebo Harmonic** | Isaac Sim 6.x, if a qualifying GPU is obtained | Decided 6 Sep 2026 by the SETUP.md §1.2 rule — see D15 |
 | Middleware | ROS 2 Jazzy | ROS 2 Humble | Jazzy on Ubuntu 24.04 |
 | SLAM | RTAB-Map | ORB-SLAM3 (offline benchmark only) | One SLAM system in the runtime graph, never two |
 | Depth | Stereo / RGB-D | Depth Anything V2 Small | Prefer real metric depth |
@@ -88,6 +88,24 @@ is the last thing between a planner command and the wheels.
 **Rule:** exactly one localisation stack runs at a time. Running RTAB-Map and
 ORB-SLAM3 together adds integration and debugging cost without guaranteeing
 better navigation.
+
+> **Simulator decision, 6 September 2026 (D15).** The project's development GPU
+> is an RTX 3050 laptop part (4–6 GB VRAM) in a Lenovo LOQ. NVIDIA's published
+> Isaac Sim minimum — re-verified against the live requirements page on 6 Sep
+> 2026 — is a **GeForce RTX 4080 with 16 GB VRAM and 32 GB system RAM**, and the
+> same page warns that workloads "leveraging a large number of sensors are
+> particularly affected" below that line. A stereo pair plus depth plus IMU over
+> randomised outdoor terrain is exactly that workload. SETUP.md §1.2 says not to
+> fight a marginal GPU, so **Gazebo Harmonic is now the primary simulator.**
+>
+> Nothing above the simulator changes. SLAM, traversability, Nav2, the
+> supervisor and the whole §4 interface contract are untouched — which is what
+> the contract is for.
+>
+> The RTX 3050 does clear the one *hard* gate: it has RT cores, unlike the
+> integrated GPU audited on 5 Sep. Isaac Sim would launch. It is held as a
+> contingent option for offline synthetic-data generation on small scenes, not
+> as the development loop.
 
 ---
 

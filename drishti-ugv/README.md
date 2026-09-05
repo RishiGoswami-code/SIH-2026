@@ -74,7 +74,7 @@ the architecture and the SIH idea submission deck are complete; Phase 0
 |---|---|---|
 | OS | Ubuntu 24.04 | — |
 | Middleware | ROS 2 Jazzy | ROS 2 Humble |
-| Simulator | NVIDIA Isaac Sim 6.x | Gazebo Harmonic |
+| Simulator | **Gazebo Harmonic** | Isaac Sim 6.x, if a qualifying GPU appears |
 | Localisation | RTAB-Map (stereo + IMU) | ORB-SLAM3 (offline benchmark only) |
 | Terrain | `elevation_mapping_cupy` | custom grid map |
 | Navigation | Nav2 + MPPI controller | Nav2 + RPP / DWB |
