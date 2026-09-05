@@ -20,18 +20,25 @@ simulation-first in NVIDIA Isaac Sim. Built for SIH 2026 Problem Statement
 
 ## Current state — read this first
 
-**Pre-implementation.** There is no source code, no ROS 2 workspace and no
-build system in this repository yet. It currently contains planning documents
-only.
+**Phase 0, partially blocked.** `ugv_ws/` now exists with two packages —
+`drishti_msgs` and `drishti_bringup` — but **it has never been built.** No
+machine on the project has ROS 2 installed. The manifests, message definitions
+and params file are syntax-checked only.
+
+The blocker is hardware: the development machine has no NVIDIA GPU, so neither
+Isaac Sim nor `elevation_mapping_cupy` can run on it at all. See
+[STATUS.md](STATUS.md) **B3** — read it before planning any work that assumes a
+GPU.
 
 Consequences:
 
-- **Do not invent build or test commands.** The "Commands" section below is
-  marked *planned* until Phase 0 lands. If you are asked to run something that
-  does not exist, say so.
-- The first code change should be Phase 0 in [TASK.md](TASK.md), which creates
-  the workspace skeleton. Update this file and [STATUS.md](STATUS.md) when it
-  does.
+- **Do not invent build or test commands, and do not report `colcon build` as
+  working.** It is unverified. If you are asked to run something that cannot
+  run here, say so rather than simulating a result.
+- Treat the first successful `colcon build` as the real Phase 0 acceptance
+  event, and fill *Pinned versions* in STATUS.md when it happens.
+- Nothing below `drishti_msgs` and `drishti_bringup` exists yet. The remaining
+  packages in the layout are planned, not present.
 
 ---
 
@@ -87,23 +94,28 @@ drishti-ugv/
 ├── EVALUATION.md        metrics and the test scenario catalog
 ├── REFERENCES.md        upstream repos, licences, documentation
 ├── STATUS.md            living state and decision log
-└── CLAUDE.md            this file
+├── CLAUDE.md            this file
+└── ugv_ws/              ROS 2 colcon workspace
+    └── src/
+        ├── drishti_msgs/        SafetyState, PerceptionHealth      ← exists
+        └── drishti_bringup/     shared params, launch              ← exists
 ```
 
-Planned once Phase 0 lands:
+Planned, not yet present:
 
 ```
-├── src/                 ROS 2 packages (colcon workspace source)
-│   ├── drishti_msgs/            custom messages
-│   ├── drishti_bringup/         launch files and params
-│   ├── drishti_perception/      detection, segmentation, health
-│   ├── drishti_traversability/  elevation → cost fusion, Nav2 layer
-│   ├── drishti_safety/          deterministic supervisor
-│   └── drishti_eval/            metrics, scenario runner, reports
-├── sim/                 Isaac Sim scenes, robot description, randomisation
-├── config/              shared params (pinned, version-controlled)
+    └── src/
+        ├── drishti_perception/      detection, segmentation, health
+        ├── drishti_traversability/  elevation → cost fusion, Nav2 layer
+        ├── drishti_safety/          deterministic supervisor
+        └── drishti_eval/            metrics, scenario runner, reports
+├── sim/                 simulator scenes, robot description, randomisation
 └── docker/              reproducible environment
 ```
+
+Note the workspace lives at `drishti-ugv/ugv_ws/`, not at the repository root —
+the repository root also carries `deck/` and `source/`. Shared parameters live
+in `drishti_bringup/config/`, not a top-level `config/`.
 
 ---
 

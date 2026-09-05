@@ -1,0 +1,58 @@
+# DRISHTI-UGV — shared parameters
+#
+# One file, loaded by every node in the stack. Thresholds are logged at startup
+# with the run so a result can be traced back to the configuration that
+# produced it (SPEC.md section 9.3).
+#
+# ---------------------------------------------------------------------------
+# THE NUMBERS BELOW ARE INITIAL DEFAULTS, NOT TUNED VALUES.
+# SPEC.md section 9.3 fixes the parameter *names* and meanings; it does not
+# fix the values. Phase 5 (TASK.md) tunes them against the randomised suite
+# and EVALUATION.md records what they were changed to and why.
+# ---------------------------------------------------------------------------
+
+# Global clock. SPEC.md section 3.2 rule 4: a single node on the wrong clock
+# corrupts the map. Set false only for a real-hardware run.
+/**:
+  ros__parameters:
+    use_sim_time: true
+
+safety_supervisor:
+  ros__parameters:
+    use_sim_time: true
+
+    # --- staleness limits ------------------------------------------------
+    # Absence of evidence is not evidence of safety (SPEC.md section 9.4.2).
+    # Sized for a 30 Hz camera: roughly nine missed frames.
+    t_camera_stale: 0.30        # s, max age of an RGB frame
+    t_depth_stale: 0.30         # s, max age of a depth frame
+
+    # --- emergency geometry ----------------------------------------------
+    d_emergency: 0.80           # m, lethal obstacle distance -> immediate stop
+
+    # --- perception trust -------------------------------------------------
+    c_critical: 0.40            # 0..1 confidence floor for full speed
+
+    # --- speed limits -----------------------------------------------------
+    v_max: 1.20                 # m/s normal ceiling
+    v_slow: 0.35                # m/s reduced ceiling under low confidence
+
+    # --- localisation health ----------------------------------------------
+    cov_max: 0.50               # largest pose covariance diagonal before "lost"
+
+    # --- supervisor tick --------------------------------------------------
+    # Bounds the emergency-stop path. SPEC.md section 8 budgets < 200 ms
+    # (prototype) and < 100 ms (competition); 50 Hz leaves margin for the
+    # detection and publish legs.
+    watchdog_period: 0.02       # s
+
+    # --- interface contract ------------------------------------------------
+    # SPEC.md section 4.3: Nav2 publishes to cmd_vel_in and must never be able
+    # to reach the base directly. The supervisor owns cmd_vel_out.
+    cmd_vel_in: /cmd_vel_nav
+    cmd_vel_out: /cmd_vel
+
+    # Nav2 supports Twist or TwistStamped depending on version and config.
+    # Pin this once against the Nav2 actually installed, then keep it
+    # identical across Nav2, the supervisor and the base. Do not assume.
+    use_twist_stamped: false
