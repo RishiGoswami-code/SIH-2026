@@ -10,19 +10,44 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-> **Not yet built.** No machine in the project currently has ROS 2 installed,
-> so `colcon build` is **unverified** — see STATUS.md blocker **B2**. The
-> package manifests, message definitions and parameter file below have been
-> syntax-checked only. Treat the first successful build as the real Phase 0
-> acceptance event and record the exact toolchain versions in STATUS.md when it
-> happens.
+> **`colcon build` is unverified.** No machine on the project has ROS 2
+> installed yet — STATUS.md blocker **B3**. Treat the first successful build as
+> the real Phase 0 acceptance event and record the exact toolchain versions in
+> STATUS.md when it happens.
+
+### What *is* verified
+
+The supervisor's decision core has no ROS dependency, by design, so it can be
+compiled and tested on any machine with a C++17 compiler — including one that
+cannot run ROS at all. **It compiles clean under `-Wall -Wextra -Wpedantic
+-Werror` and passes 377 checks.**
+
+```bash
+cd src/drishti_safety
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Iinclude \
+    src/supervisor_core.cpp test/test_supervisor_core.cpp -o test_sup && ./test_sup
+```
+
+The same file is registered as a CTest target, so `colcon test` runs it too.
+
+```bash
+python tools/check_contract_sync.py
+```
+
+catches the drift a compiler cannot see: `SafetyState.msg` constants against the
+C++ `Action`/`Reason` enums, and the `Params` defaults in the header against
+`drishti.yaml`. Run it after touching any of those three files.
+
+Everything else — the ROS node, the launch file — is **uncompiled and
+unexecuted**.
 
 ## Packages
 
-| Package | Type | Contents |
-|---|---|---|
-| `drishti_msgs` | `ament_cmake` + rosidl | `SafetyState`, `PerceptionHealth` |
-| `drishti_bringup` | `ament_cmake` | shared params, launch files |
+| Package | Type | Contents | State |
+|---|---|---|---|
+| `drishti_msgs` | `ament_cmake` + rosidl | `SafetyState`, `PerceptionHealth` | syntax-checked |
+| `drishti_bringup` | `ament_cmake` | shared params, `safety.launch.py` | syntax-checked |
+| `drishti_safety` | `ament_cmake` | supervisor core + ROS node | **core tested**, node uncompiled |
 
 Everything else in the system uses standard ROS 2 interfaces. Two custom
 messages exist because nothing standard carries them (SPEC.md §4).
@@ -63,17 +88,39 @@ clock setting from one file, `config/drishti.yaml`.
    publisher on `/cmd_vel`. If Nav2 can reach the base directly, the safety
    design is void (SPEC.md §4.3, §9.4.1).
 
+### `drishti_safety`
+
+The supervisor, split in two on purpose:
+
+- **`supervisor_core.{hpp,cpp}`** — all the policy, zero dependencies beyond
+  the standard library. One function, `evaluate()`, decides everything. It is
+  pure: same inputs, same decision, no clock, no I/O.
+- **`safety_supervisor_node.cpp`** — collects evidence, ticks on its own timer,
+  calls `evaluate()`, publishes. Holds no policy.
+
+That split is what makes invariant 9.4.5 real rather than aspirational.
+
+**The evaluation order diverges from the SPEC.md §9.1 pseudocode as originally
+written, and the spec has been corrected to match** — see §9.1 and D13. Briefly:
+every STOP condition is now checked before the single SLOW branch, because the
+original order let low perception confidence mask a missing path and forward a
+command anyway.
+
 ## Layout
 
 ```
 ugv_ws/
+├── tools/check_contract_sync.py     cross-file consistency checks
 └── src/
     ├── drishti_msgs/
-    │   ├── msg/SafetyState.msg
-    │   └── msg/PerceptionHealth.msg
-    └── drishti_bringup/
-        ├── config/drishti.yaml
-        └── launch/
+    │   └── msg/{SafetyState,PerceptionHealth}.msg
+    ├── drishti_bringup/
+    │   ├── config/drishti.yaml
+    │   └── launch/safety.launch.py
+    └── drishti_safety/
+        ├── include/drishti_safety/supervisor_core.hpp
+        ├── src/{supervisor_core,safety_supervisor_node}.cpp
+        └── test/test_supervisor_core.cpp
 ```
 
 `build/`, `install/` and `log/` are ignored.

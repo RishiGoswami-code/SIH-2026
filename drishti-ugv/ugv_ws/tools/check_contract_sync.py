@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Cross-file consistency checks that no single compiler can catch.
+
+Three things drift silently in this workspace and each one is a real hazard:
+
+  1. drishti_msgs/msg/SafetyState.msg constants vs the C++ Action/Reason enums.
+     A mismatch means the supervisor publishes a reason code that means
+     something else downstream -- the audit trail lies.
+
+  2. The Params defaults in supervisor_core.hpp vs drishti_bringup's
+     drishti.yaml. A mismatch means a node started without a params file
+     silently runs a different safety envelope than one started with it.
+
+  3. Every SPEC.md section 9.3 parameter is present in both.
+
+Runs anywhere with Python 3; needs neither ROS nor a compiler.
+
+    python tools/check_contract_sync.py
+"""
+import os
+import re
+import sys
+
+WS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MSG = os.path.join(WS, "src", "drishti_msgs", "msg", "SafetyState.msg")
+HPP = os.path.join(WS, "src", "drishti_safety", "include", "drishti_safety",
+                   "supervisor_core.hpp")
+YAML = os.path.join(WS, "src", "drishti_bringup", "config", "drishti.yaml")
+
+# SPEC.md section 9.3
+SPEC_PARAMS = {
+    "t_camera_stale", "t_depth_stale", "d_emergency", "c_critical",
+    "v_max", "v_slow", "cov_max", "watchdog_period",
+}
+
+failures = []
+
+
+def fail(msg):
+    failures.append(msg)
+    print("  FAIL  " + msg)
+
+
+def ok(msg):
+    print("  ok    " + msg)
+
+
+def read(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def msg_constants(text, prefix):
+    """ACTION_/REASON_ constants from a .msg file, stripped of their prefix."""
+    out = {}
+    for m in re.finditer(r"^\s*uint8\s+(%s\w+)\s*=\s*(\d+)" % prefix, text, re.M):
+        out[m.group(1)[len(prefix):]] = int(m.group(2))
+    return out
+
+
+def cpp_enum(text, name):
+    """Values of an `enum class <name> : std::uint8_t { ... }` block."""
+    m = re.search(r"enum\s+class\s+%s\s*:[^{]*\{(.*?)\}" % name, text, re.S)
+    if not m:
+        fail("could not find enum class %s in supervisor_core.hpp" % name)
+        return {}
+    # Strip comments BEFORE splitting: a doc comment may itself contain a comma
+    # ("clamped to v_slow, ..."), which would otherwise split mid-comment and
+    # glue the tail onto the next enumerator.
+    body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
+    body = re.sub(r"//[^\n]*", "", body)
+
+    out = {}
+    for chunk in body.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        em = re.match(r"^(\w+)\s*=\s*(\d+)$", chunk)
+        if em:
+            out[em.group(1)] = int(em.group(2))
+        else:
+            fail("could not parse enumerator %r in enum class %s" % (chunk, name))
+    return out
+
+
+def cpp_param_defaults(text):
+    """Params struct member defaults: `double name{1.23};`"""
+    m = re.search(r"struct\s+Params\s*\{(.*?)\n\};", text, re.S)
+    if not m:
+        fail("could not find struct Params in supervisor_core.hpp")
+        return {}
+    return {n: float(v) for n, v in
+            re.findall(r"double\s+(\w+)\s*\{\s*([-\d.eE+]+)\s*\}", m.group(1))}
+
+
+def yaml_supervisor_params(text):
+    """Numeric params under safety_supervisor: ros__parameters:."""
+    m = re.search(r"^safety_supervisor:\s*\n\s+ros__parameters:\s*\n(.*)", text,
+                  re.S | re.M)
+    if not m:
+        fail("could not find safety_supervisor block in drishti.yaml")
+        return {}
+    out = {}
+    for line in m.group(1).splitlines():
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        if not line.startswith("    "):        # left the block
+            break
+        pm = re.match(r"\s+(\w+)\s*:\s*([-\d.eE+]+)\s*(?:#.*)?$", line)
+        if pm:
+            out[pm.group(1)] = float(pm.group(2))
+    return out
+
+
+msg_text, hpp_text, yaml_text = read(MSG), read(HPP), read(YAML)
+
+print("1. SafetyState.msg constants vs C++ enums")
+for prefix, enum_name in (("ACTION_", "Action"), ("REASON_", "Reason")):
+    from_msg = msg_constants(msg_text, prefix)
+    from_cpp = cpp_enum(hpp_text, enum_name)
+    if not from_msg:
+        fail("no %s constants found in SafetyState.msg" % prefix)
+        continue
+    if from_msg == from_cpp:
+        ok("%-6s %d constants match exactly" % (enum_name, len(from_msg)))
+    else:
+        for k in sorted(set(from_msg) | set(from_cpp)):
+            a, b = from_msg.get(k), from_cpp.get(k)
+            if a != b:
+                fail("%s.%s: .msg=%s C++=%s" % (enum_name, k, a, b))
+
+print("2. Params defaults: supervisor_core.hpp vs drishti.yaml")
+cpp = cpp_param_defaults(hpp_text)
+yml = yaml_supervisor_params(yaml_text)
+for name in sorted(SPEC_PARAMS):
+    c, y = cpp.get(name), yml.get(name)
+    if c is None:
+        fail("%s missing from struct Params" % name)
+    elif y is None:
+        fail("%s missing from drishti.yaml" % name)
+    elif abs(c - y) > 1e-12:
+        fail("%s: header default=%g, yaml=%g" % (name, c, y))
+    else:
+        ok("%-16s %g" % (name, c))
+
+print("3. SPEC.md section 9.3 coverage")
+missing_cpp = SPEC_PARAMS - set(cpp)
+missing_yml = SPEC_PARAMS - set(yml)
+if missing_cpp:
+    fail("SPEC 9.3 params absent from header: %s" % sorted(missing_cpp))
+if missing_yml:
+    fail("SPEC 9.3 params absent from yaml: %s" % sorted(missing_yml))
+if not missing_cpp and not missing_yml:
+    ok("all %d SPEC 9.3 parameters present in both" % len(SPEC_PARAMS))
+
+print()
+if failures:
+    print("%d PROBLEM(S)" % len(failures))
+    sys.exit(1)
+print("contract in sync")

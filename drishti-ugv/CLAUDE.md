@@ -96,9 +96,11 @@ drishti-ugv/
 ├── STATUS.md            living state and decision log
 ├── CLAUDE.md            this file
 └── ugv_ws/              ROS 2 colcon workspace
+    ├── tools/               contract-drift checks (no ROS needed)
     └── src/
         ├── drishti_msgs/        SafetyState, PerceptionHealth      ← exists
-        └── drishti_bringup/     shared params, launch              ← exists
+        ├── drishti_bringup/     shared params, safety.launch.py    ← exists
+        └── drishti_safety/      supervisor core + ROS node         ← exists
 ```
 
 Planned, not yet present:
@@ -107,7 +109,6 @@ Planned, not yet present:
     └── src/
         ├── drishti_perception/      detection, segmentation, health
         ├── drishti_traversability/  elevation → cost fusion, Nav2 layer
-        ├── drishti_safety/          deterministic supervisor
         └── drishti_eval/            metrics, scenario runner, reports
 ├── sim/                 simulator scenes, robot description, randomisation
 └── docker/              reproducible environment
@@ -121,26 +122,35 @@ in `drishti_bringup/config/`, not a top-level `config/`.
 
 ## Commands
 
-> **Status: planned.** None of these work until Phase 0 creates the workspace.
-> Do not cite them as if they run today.
+### These work today, on any machine with Python 3 and a C++17 compiler
 
 ```bash
-# build
+# Safety supervisor core: 377 checks, no ROS required.
+cd ugv_ws/src/drishti_safety
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Iinclude \
+    src/supervisor_core.cpp test/test_supervisor_core.cpp -o test_sup && ./test_sup
+
+# Cross-file contract drift: .msg constants vs C++ enums, header defaults vs YAML.
+cd ugv_ws && python tools/check_contract_sync.py
+```
+
+Run both after touching `supervisor_core.*`, `SafetyState.msg` or
+`drishti.yaml`.
+
+### These are unverified — do not cite them as working
+
+```bash
 colcon build --symlink-install
-
-# source
 source install/setup.bash
-
-# test
 colcon test --event-handlers console_direct+
 colcon test-result --verbose
 
-# lint (ament, per package)
-colcon test --packages-select <pkg> --ctest-args -R lint
+ros2 launch drishti_bringup safety.launch.py
 ```
 
-Launch entry points are defined in `drishti_bringup` and will be listed here
-once they exist.
+Nothing in this list has ever been executed (STATUS.md **B3**). The ROS node
+and the launch file are written but uncompiled; expect to fix small API details
+on the first real build.
 
 ---
 

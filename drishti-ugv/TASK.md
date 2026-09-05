@@ -133,12 +133,17 @@ odometry and Nav2.
 
 **Artefact:** a deterministic gate on `/cmd_vel` with measured stop latency.
 
-- [ ] Define `drishti_msgs/SafetyState` with reason codes
-- [ ] Implement the C++ supervisor per SPEC.md §9, ticking on its own timer
-- [ ] Enforce the invariant: supervisor is the sole `/cmd_vel` publisher
-- [ ] Implement all seven stop/slow conditions with fixed evaluation order
-- [ ] Move every threshold into one params file, logged at startup
-- [ ] Unit-test the decision logic **without ROS running**
+> **Partly built early, during Phase 0 — see STATUS.md D14.** The decision core
+> is pure logic with no ROS or hardware dependency, so it was the one
+> substantial component fully verifiable on a machine that cannot run the
+> stack. Everything still unchecked below needs a running system.
+
+- [x] Define `drishti_msgs/SafetyState` with reason codes
+- [x] Implement the C++ supervisor per SPEC.md §9, ticking on its own timer — *core done and tested; the ROS node wrapping it is **uncompiled***
+- [ ] Enforce the invariant: supervisor is the sole `/cmd_vel` publisher — *coded, unproven; needs `ros2 topic info /cmd_vel` on a live graph*
+- [x] Implement all seven stop/slow conditions with fixed evaluation order — *and corrected the order; SPEC.md §9.1 had a defect (D13)*
+- [x] Move every threshold into one params file, logged at startup
+- [x] Unit-test the decision logic **without ROS running** — *377 checks, clean under `-Werror`*
 - [ ] Build the Failure world: frozen camera, stale depth, SLAM loss, invalid commands
 - [ ] Measure stop latency from fault injection to blocked command
 

@@ -147,6 +147,7 @@ what makes the hardware transfer a driver swap.
 | `/perception/detections` | `vision_msgs/msg/Detection2DArray` | perception | traversability fusion, supervisor |
 | `/perception/semantic_mask` | `sensor_msgs/msg/Image` (mono8, class ids) | perception | traversability fusion |
 | `/perception/health` | `drishti_msgs/msg/PerceptionHealth` | perception | supervisor |
+| `/perception/nearest_obstacle` | `std_msgs/msg/Float32` (metres; NaN = nothing in range) | perception | supervisor |
 | `/rtabmap/odom` | `nav_msgs/msg/Odometry` | RTAB-Map | Nav2, diagnostics |
 | `/rtabmap/localization_pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` | RTAB-Map | supervisor |
 | `/map` | `nav_msgs/msg/OccupancyGrid` | RTAB-Map | Nav2, RViz2 |
@@ -334,17 +335,34 @@ decisions.
 ### 9.1 Decision logic
 
 ```
-if localization_lost:            STOP
-elif depth_stale:                STOP
-elif camera_stale:               STOP
-elif obstacle_distance < d_emergency:  STOP
+if localization_lost:                    STOP
+elif depth_stale:                        STOP
+elif camera_stale:                       STOP
+elif obstacle_distance < d_emergency:    STOP
+elif path_is_invalid:                    STOP
+elif command_not_finite:                 STOP
 elif perception_confidence < c_critical: SLOW_DOWN
-elif path_is_invalid:            STOP
-else:                            PASS THROUGH Nav2 COMMAND
+else:                                    PASS THROUGH Nav2 COMMAND
 ```
 
 Evaluation order is fixed and the first match wins. Every branch publishes a
 reason code on `/safety/state`.
+
+> **Corrected 5 September 2026 (D13).** An earlier revision of this block put
+> the low-confidence `SLOW_DOWN` branch *above* `path_is_invalid`. Under "first
+> match wins" that forwarded a command whenever confidence was low, even with
+> no usable path — low confidence masked a harder fault. **Every STOP condition
+> is now evaluated before the single SLOW branch**, which can only ever turn a
+> SLOW into a STOP and never the reverse. `command_not_finite` was also hoisted
+> above the forwarding paths, because clamping `NaN` yields `NaN`.
+>
+> Two consequences worth keeping in mind:
+> - The reason-code *numbers* in `drishti_msgs/msg/SafetyState` still follow the
+>   original listing order, so they no longer match the evaluation order. Do not
+>   infer precedence from them.
+> - A non-finite `nearest_obstacle` is read as "nothing found in range", not as
+>   a fault. That is only sound because depth staleness is ruled out first —
+>   the ordering is load-bearing, not cosmetic.
 
 ### 9.2 Conditions
 
@@ -371,6 +389,15 @@ All thresholds live in one params file and are logged at startup with the run.
 | `v_max`, `v_slow` | normal and reduced speed limits |
 | `cov_max` | pose covariance ceiling before "lost" |
 | `watchdog_period` | supervisor tick; bounds stop latency |
+| `t_pose_stale` | max age of a localisation pose |
+| `t_plan_stale` | max age of a `/plan` before it is unusable |
+| `t_cmd_stale` | max age of a Nav2 command before STOP |
+
+The last three were added on 5 September 2026 (D13). The original list gave
+staleness limits for the camera and depth streams only; the supervisor also
+depends on the pose, the plan and the command stream, and without limits on
+those a silent planner or a dead Nav2 would leave it forwarding a stale command
+indefinitely — a direct breach of invariant 9.4.2.
 
 ### 9.4 Invariants
 

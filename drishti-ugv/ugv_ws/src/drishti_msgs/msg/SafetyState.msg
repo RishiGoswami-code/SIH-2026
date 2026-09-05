@@ -14,8 +14,14 @@ uint8 ACTION_STOP = 2            # zero velocity published
 uint8 action
 
 # ---- why ----------------------------------------------------------------
-# Evaluation order is fixed and the first match wins (SPEC.md section 9.1).
-# These values follow that order so a rising reason code means "checked later".
+# These values match drishti_safety::Reason one for one; they follow the
+# SPEC.md section 9.1 *listing* order.
+#
+# They are NOT the evaluation order. The supervisor checks every STOP condition
+# before the SLOW condition, so LOW_CONFIDENCE (5) is evaluated after
+# PATH_INVALID (6) and COMMAND_INVALID (7). See the comment on
+# SupervisorCore::evaluate for why, and do not infer ordering from these
+# numbers.
 uint8 REASON_NONE = 0
 uint8 REASON_LOCALIZATION_LOST = 1
 uint8 REASON_DEPTH_STALE = 2

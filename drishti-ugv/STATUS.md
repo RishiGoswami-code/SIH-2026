@@ -38,12 +38,26 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 6 | Repository pushed to `github.com/RishiGoswami-code/SIH-2026` | 4 Sep 2026 |
 | 7 | **Workstation hardware audited — fails the Isaac Sim floor on every axis** (Q2 closed, A2 falsified) | 5 Sep 2026 |
 | 8 | `ugv_ws` colcon skeleton: `drishti_msgs` (`SafetyState`, `PerceptionHealth`) and `drishti_bringup` (shared params, `use_sim_time` global) — syntax-checked, **not built** | 5 Sep 2026 |
+| 9 | **Safety supervisor decision core written and tested — 377 checks, 0 failures, clean under `-Wall -Wextra -Wpedantic -Werror`.** ROS-free by design, so it was verifiable on the blocked machine | 5 Sep 2026 |
+| 10 | `tools/check_contract_sync.py` — guards `.msg` constants against the C++ enums and the header defaults against `drishti.yaml`; negative-tested | 5 Sep 2026 |
+| 11 | **SPEC.md §9.1 ordering defect found and corrected** (D13), plus §4.2 topic and three §9.3 parameters added | 5 Sep 2026 |
 
 ## In progress
 
 **Phase 0**, tasks 6–7 of 9 done (workspace skeleton, shared config). Tasks 1–5
 and 8–9 need a machine that can run ROS 2 and a simulator, and are held behind
 **B3**.
+
+Ahead of schedule, out of phase order (D14): the **safety supervisor decision
+core** is written and tested — 377 checks, clean under `-Werror`. Its ROS
+wrapper and launch file are written but **have never been compiled or run**.
+
+An NVIDIA laptop and an Apple-silicon laptop are reported available (5 Sep
+2026). **Neither has been audited.** The NVIDIA machine's exact GPU decides
+whether Isaac Sim is possible at all — a GTX part has no RT cores and fails the
+same way the current machine does. Apple silicon cannot run Isaac Sim under any
+configuration. Until the NVIDIA GPU model, VRAM and RAM are known, B3 stays
+open.
 
 ## Next actions
 
@@ -115,6 +129,8 @@ Decisions with consequences. Append; do not rewrite history.
 | D10 | 4 Sep 2026 | Deck generated from `build_deck.py` rather than hand-edited | Reproducible, and re-exportable when team details change | Yes |
 | D11 | 5 Sep 2026 | **Phase 0 split: the machine-independent half was built, the rest held.** `ugv_ws` skeleton, `drishti_msgs` and the shared params file were written and syntax-checked without a ROS install | The interface contract (SPEC.md §4, §9) is fixed and does not depend on which simulator or machine wins. Writing it now keeps Phase 0 moving while B3 is open, and it transfers unchanged to whatever compute path is chosen | Yes — cheap to revise |
 | D12 | 5 Sep 2026 | **`elevation_mapping_cupy` is not viable on the current machine** and D4's "custom grid map fallback" is now the live path unless a CUDA GPU is obtained | CuPy requires CUDA; the audited machine has no NVIDIA GPU. This is a capability gap, not a tuning problem | Yes — reverts if an RTX machine or cloud GPU is secured |
+| D13 | 5 Sep 2026 | **SPEC.md §9.1 evaluation order corrected: all STOP conditions now precede the SLOW branch.** `command_not_finite` hoisted above the forwarding paths; `t_pose_stale`, `t_plan_stale`, `t_cmd_stale` added to §9.3; `/perception/nearest_obstacle` added to §4.2 | The original "first match wins" order forwarded a command whenever confidence was low — even with no valid path — so low confidence masked a harder fault. Reordering can only turn SLOW into STOP, never the reverse, so it cannot weaken the envelope. The extra thresholds close the same hole for the pose, plan and command streams | **No** — safety ordering |
+| D14 | 5 Sep 2026 | **Safety supervisor built during Phase 0, ahead of its Phase 5 slot** | A deliberate exception to the phase gates (D6), taken because the core is pure logic with no ROS or hardware dependency and was the one substantial component fully verifiable on a machine that cannot run the stack. The gate's purpose — stopping a model from masking a broken foundation — is not weakened: this component has no model in it. The ROS node it wraps remains uncompiled and unproven | Yes |
 
 ---
 
