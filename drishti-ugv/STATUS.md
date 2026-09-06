@@ -12,9 +12,9 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 
 | | |
 |---|---|
-| **Phase** | Phase 0 — **unblocked**, ready to install |
+| **Phase** | Phase 1 — assets written, **nothing has been run** |
 | **Last updated** | 6 September 2026 |
-| **Next action** | On the Lenovo LOQ: Ubuntu 24.04 + ROS 2 Jazzy + Gazebo Harmonic, then `colcon build` |
+| **Next action** | Keep building phases offline; first `colcon build` waits on the LOQ or an AWS GPU instance |
 | **Hard deadline** | **30 September 2026** — SIH idea submission |
 | **Blocked on** | Team ID (B1, submission only) |
 
@@ -44,39 +44,46 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 9 | **Safety supervisor decision core written and tested — 377 checks, 0 failures, clean under `-Wall -Wextra -Wpedantic -Werror`.** ROS-free by design, so it was verifiable on the blocked machine | 5 Sep 2026 |
 | 10 | `tools/check_contract_sync.py` — guards `.msg` constants against the C++ enums and the header defaults against `drishti.yaml`; negative-tested | 5 Sep 2026 |
 | 11 | **SPEC.md §9.1 ordering defect found and corrected** (D13), plus §4.2 topic and three §9.3 parameters added | 5 Sep 2026 |
+| 12 | **Phase 1 assets written**: `drishti_description` (skid-steer UGV, stereo + depth + IMU), `drishti_sim` (Gazebo Harmonic Easy world, ros_gz bridge), `nav2.yaml` and bringup launch | 6 Sep 2026 |
+| 13 | `tools/check_robot_description.py` and `tools/check_wiring.py` — frame tree and `/cmd_vel` ownership enforced offline; both negative-tested | 6 Sep 2026 |
 
 ## In progress
 
-**Phase 0**, tasks 6–7 of 9 done (workspace skeleton, shared config). The
-install tasks are now unblocked and move to the Lenovo LOQ.
+**Build-ahead strategy (D17).** The team chose to write the full stack offline
+and defer every install to a later session on the Lenovo LOQ or an AWS GPU
+instance. So phases advance by *assets written and statically checked*, and the
+phase-gate acceptance criteria — which all require a running system — stay open
+behind them.
 
-Ahead of schedule, out of phase order (D14): the **safety supervisor decision
-core** is written and tested — 377 checks, clean under `-Werror`. Its ROS
-wrapper and launch file are written but **have never been compiled or run**.
+| Phase | Assets | Run |
+|---|---|---|
+| 0 Environment | workspace, msgs, shared params | ✗ |
+| 1 Sim navigation | description, Gazebo Easy world, bridge, Nav2 config, bringup | ✗ |
+| 5 Safety | supervisor core **tested**, ROS node written | core ✓, node ✗ |
+
+Nothing in this repository has been compiled by a ROS toolchain or executed.
+The one exception remains the supervisor decision core: 377 checks, clean under
+`-Werror`, because it has no ROS dependency by design.
 
 ## Next actions
 
-All on the **Lenovo LOQ (RTX 3050)**, which is now the development machine:
+Continue building offline, in phase order: **Phase 2** (RTAB-Map configuration
+and the `drishti_eval` ATE/RPE implementation, which is pure maths and
+therefore testable here), then **Phase 3** (traversability fusion — the cost
+function in SPEC.md §6.1 is likewise pure and testable).
 
-1. Install **Ubuntu 24.04** and a current NVIDIA driver.
-2. Install **ROS 2 Jazzy**; verify `ros2 topic list` and a talker/listener pair.
-3. Install **Gazebo Harmonic** (not Isaac Sim — D15).
-4. `colcon build --symlink-install` on `ugv_ws`. **This is the first real build
-   of anything in this project.** Expect to fix rclcpp API details in
-   `safety_supervisor_node.cpp`, which has never been compiled.
-5. `ros2 launch drishti_bringup safety.launch.py` with nothing else running.
-   The supervisor should sit in STOP and publish zero velocity — that is the
-   correct behaviour and makes the fail-safe path observable on day one.
-6. Confirm the invariant on a live graph: `ros2 topic info /cmd_vel` must show
-   exactly one publisher.
-7. Record exact Ubuntu, driver, CUDA, ROS 2, Gazebo, Nav2 and RTAB-Map versions
-   in *Pinned versions* below.
-8. **Get the Team ID** from the SIH portal and fill it on the title slide (B1).
+When a machine is available, in this order:
 
-Still unmeasured on the LOQ: exact VRAM (4 or 6 GB), system RAM and free disk.
-None of these change D15 — both VRAM variants sit far below the 16 GB Isaac Sim
-floor — but they do bound how large a Gazebo world and how heavy a perception
-model the machine will carry, so record them at step 1.
+1. Ubuntu 24.04 + NVIDIA driver; record VRAM, RAM and free disk.
+2. ROS 2 Jazzy, then Gazebo Harmonic (not Isaac Sim — D15).
+3. `colcon build --symlink-install`. **First real build of anything here.**
+   Expect to fix rclcpp API details in `safety_supervisor_node.cpp`.
+4. Confirm the gz topic names in `drishti_sim/config/bridge.yaml` against
+   `gz topic -l`. A wrong name looks exactly like a dead sensor.
+5. `ros2 topic info /cmd_vel --verbose` — exactly one publisher,
+   `safety_supervisor`. This is the invariant the whole safety story rests on.
+6. Fill *Pinned versions* below.
+7. **Get the Team ID** from the SIH portal (B1).
 
 ---
 
@@ -176,6 +183,7 @@ Decisions with consequences. Append; do not rewrite history.
 | D14 | 5 Sep 2026 | **Safety supervisor built during Phase 0, ahead of its Phase 5 slot** | A deliberate exception to the phase gates (D6), taken because the core is pure logic with no ROS or hardware dependency and was the one substantial component fully verifiable on a machine that cannot run the stack. The gate's purpose — stopping a model from masking a broken foundation — is not weakened: this component has no model in it. The ROS node it wraps remains uncompiled and unproven | Yes |
 | D15 | 6 Sep 2026 | **Gazebo Harmonic becomes the primary simulator; Isaac Sim held as contingent** | The development machine is a Lenovo LOQ with an RTX 3050 laptop GPU, 4–6 GB VRAM. NVIDIA's live requirements page (re-checked 6 Sep 2026) sets the Isaac Sim minimum at RTX 4080 / 16 GB VRAM / 32 GB RAM and warns that sensor-heavy workloads suffer below it — a stereo pair, depth and IMU over randomised terrain is precisely that. SETUP.md §1.2: decide, record, move | Yes — reverts if a qualifying GPU is obtained |
 | D16 | 6 Sep 2026 | **`elevation_mapping_cupy` restored as the terrain layer; D12 reversed** | The RTX 3050 provides CUDA, which the previously audited Intel Iris Xe did not. The CPU `grid_map` fallback is no longer forced — it returns to being a fallback | Yes |
+| D17 | 6 Sep 2026 | **Build the whole stack offline first; defer every install** | The team has no machine set up yet and will rent AWS GPU later. Writing assets ahead of the toolchain is only safe if the claim "this works" is never made on their behalf, so each phase records what was statically checked and what was not, and every uncompiled file carries an UNVERIFIED banner. The risk accepted is a batch of API-level fixes at first build, concentrated in the ROS wrappers | Yes |
 
 ---
 

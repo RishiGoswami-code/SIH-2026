@@ -41,12 +41,15 @@ the simulator verified, TF and clock health provable.
 **Artefact:** a virtual UGV that drives to a goal in Gazebo using simulator
 odometry and Nav2.
 
-- [ ] Build or import a simple UGV (differential/skid-steer) with a stereo camera and IMU
-- [ ] Publish robot description; verify the static TF chain from SPEC.md §3.1
-- [ ] Verify `/camera/rgb/image_raw`, `/camera/depth/image_rect_raw`, `/camera/camera_info`, `/imu/data`, `/odom`
+> **Assets written, nothing run.** Everything below that could be checked
+> without ROS has been; everything that needs a running system is still open.
+
+- [x] Build or import a simple UGV (differential/skid-steer) with a stereo camera and IMU — *`drishti_description`, 4-wheel skid-steer, stereo + depth + IMU*
+- [x] Publish robot description; verify the static TF chain from SPEC.md §3.1 — *tree checked offline by `tools/check_robot_description.py`; **not** verified in a running `tf2`*
+- [ ] Verify `/camera/rgb/image_raw`, `/camera/depth/image_rect_raw`, `/camera/camera_info`, `/imu/data`, `/odom` — *bridged in `drishti_sim/config/bridge.yaml`; gz topic names need confirming against `gz topic -l`*
 - [ ] Confirm every message carries a real sensor timestamp, not publish time
-- [ ] Install and configure Nav2; author `config/nav2.yaml`
-- [ ] Wire Nav2 to publish `/cmd_vel_nav` (**not** `/cmd_vel`) — SPEC.md §4.3
+- [x] Install and configure Nav2; author `config/nav2.yaml` — *authored, not installed*
+- [x] Wire Nav2 to publish `/cmd_vel_nav` (**not** `/cmd_vel`) — SPEC.md §4.3 — *enforced statically by `tools/check_wiring.py`*
 - [ ] Pin `Twist` vs `TwistStamped` for the installed Nav2 version and record the choice
 - [ ] Teleoperate the UGV; then send a fixed goal and reach it
 - [ ] Set up RViz2 and Foxglove views; start recording rosbag2

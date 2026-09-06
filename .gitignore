@@ -30,6 +30,11 @@ reports/
 *.engine
 weights/
 
+# ---- office lock files ----
+# PowerPoint/Word leave ~$name.pptx owner-locks while a file is open. They are
+# unreadable by other processes and must never be committed.
+~$*
+
 # ---- scratch ----
 # Accidental saves and working copies of the deck. The tracked submission
 # artefacts are deck/SIH2026_PS26126_Idea_Presentation.pptx and .pdf; anything
