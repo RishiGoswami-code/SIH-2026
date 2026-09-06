@@ -44,6 +44,11 @@ def generate_launch_description():
             'y', default_value='0.0', description='Spawn y.'),
         DeclareLaunchArgument(
             'yaw', default_value='0.0', description='Spawn yaw, radians.'),
+        DeclareLaunchArgument(
+            'z', default_value='0.15',
+            description='Spawn height. Worlds with raised terrain need this '
+                        'raised too: hard.sdf drives on a 0.45 m platform, so '
+                        'pass z:=0.60 or the vehicle starts inside the ditch.'),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -70,7 +75,7 @@ def generate_launch_description():
                 '-name', 'drishti',
                 '-x', LaunchConfiguration('x'),
                 '-y', LaunchConfiguration('y'),
-                '-z', '0.15',
+                '-z', LaunchConfiguration('z'),
                 '-Y', LaunchConfiguration('yaw'),
             ],
         ),

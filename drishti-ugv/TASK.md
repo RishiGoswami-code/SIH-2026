@@ -93,16 +93,19 @@ odometry and Nav2.
 
 **Artefact:** a traversability costmap layer that Nav2 actually plans against.
 
-- [ ] Produce `/camera/points` from depth; verify the cloud in the correct frame
+> **Cost function done and tested (1217 checks); everything requiring a running
+> map is open.** The fusion node and Nav2 layer are written but uncompiled.
+
+- [x] Produce `/camera/points` from depth; verify the cloud in the correct frame — *bridged; frame **unverified***
 - [ ] Install `elevation_mapping_cupy`; validate GPU/CUDA compatibility
-- [ ] Publish `/elevation_map` with height, variance, slope, roughness, visibility
+- [ ] Publish `/elevation_map` with height, variance, slope, roughness, visibility — *slope/roughness/step need optional plugins enabled; the fusion node warns once per missing layer*
 - [ ] Check for map "float" — pose/depth timestamp desynchronisation
-- [ ] Implement `drishti_traversability` fusion producing `/traversability` (SPEC.md §6.1)
-- [ ] Implement the Nav2 costmap layer consuming it
-- [ ] Implement the unknown-terrain rule: unobserved/low-visibility cells are expensive
-- [ ] Author an initial weight set; make weights params, not constants
-- [ ] Build the Hard world (ditches, rocks, slopes, narrow corridors)
-- [ ] Verify the planner routes around a ditch rather than across it
+- [x] Implement `drishti_traversability` fusion producing `/traversability` (SPEC.md §6.1) — *core **tested**, node uncompiled*
+- [x] Implement the Nav2 costmap layer consuming it — *written, uncompiled; never lowers a cost, goes stale rather than authorising motion*
+- [x] Implement the unknown-terrain rule: unobserved/low-visibility cells are expensive — *and a zero uncertainty weight is rejected at startup, so §6.2 cannot be configured away*
+- [x] Author an initial weight set; make weights params, not constants — *`config/traversability.yaml`, logged at startup, guarded by `check_contract_sync.py`*
+- [x] Build the Hard world (ditches, rocks, slopes, narrow corridors) — *raised platform split by a 1.6 m × 0.45 m ditch, with a flank detour so avoidance is testable*
+- [ ] Verify the planner routes around a ditch rather than across it — *needs a running stack*
 
 **Acceptance**
 - The traversability layer is visible in RViz2 and demonstrably changes the plan (FR-01).

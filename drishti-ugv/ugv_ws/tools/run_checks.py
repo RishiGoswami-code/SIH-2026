@@ -19,6 +19,7 @@ CHECKS = [
     ("contract sync (msg constants, param defaults)", "tools/check_contract_sync.py"),
     ("robot description (SPEC 3 frame tree)", "tools/check_robot_description.py"),
     ("command path (SPEC 9.4.1 /cmd_vel ownership)", "tools/check_wiring.py"),
+    ("simulation assets (worlds, systems, collisions)", "tools/check_sim_assets.py"),
     ("localisation metrics (ATE, RPE, alignment)",
      "src/drishti_eval/test/test_metrics.py"),
     ("run report (drift target, alignment disclosure)",
@@ -40,7 +41,9 @@ for title, code in results:
 
 failed = [t for t, c in results if c != 0]
 print()
-print("NOTE: the C++ supervisor tests are separate and need a compiler:")
-print("  cd src/drishti_safety && g++ -std=c++17 -Iinclude "
-      "src/supervisor_core.cpp test/test_supervisor_core.cpp -o t && ./t")
+print("NOTE: two C++ suites are separate and need a compiler:")
+print("  cd src/drishti_safety && g++ -std=c++17 -Iinclude \\")
+print("      src/supervisor_core.cpp test/test_supervisor_core.cpp -o t && ./t")
+print("  cd src/drishti_traversability && g++ -std=c++17 -Iinclude \\")
+print("      src/traversability_core.cpp test/test_traversability_core.cpp -o t && ./t")
 sys.exit(1 if failed else 0)

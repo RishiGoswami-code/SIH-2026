@@ -15,7 +15,7 @@
 
   Still deliberately absent: ditches and negative obstacles (Hard, T07), mud
   and water (T08, T09), moving obstacles (Dynamic), adversarial lighting
-  (T10, T11). Do not add them here -- a world that quietly becomes the Hard
+  (T10, T11). Do not add them here — a world that quietly becomes the Hard
   world stops being a comparison point.
 
   !! UNVERIFIED !! Never loaded by Gazebo. XML structure only.

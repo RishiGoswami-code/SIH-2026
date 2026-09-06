@@ -26,6 +26,10 @@ MSG = os.path.join(WS, "src", "drishti_msgs", "msg", "SafetyState.msg")
 HPP = os.path.join(WS, "src", "drishti_safety", "include", "drishti_safety",
                    "supervisor_core.hpp")
 YAML = os.path.join(WS, "src", "drishti_bringup", "config", "drishti.yaml")
+TRAV_HPP = os.path.join(WS, "src", "drishti_traversability", "include",
+                        "drishti_traversability", "traversability_core.hpp")
+TRAV_YAML = os.path.join(WS, "src", "drishti_bringup", "config",
+                         "traversability.yaml")
 
 # SPEC.md section 9.3
 SPEC_PARAMS = {
@@ -152,6 +156,49 @@ if missing_yml:
     fail("SPEC 9.3 params absent from yaml: %s" % sorted(missing_yml))
 if not missing_cpp and not missing_yml:
     ok("all %d SPEC 9.3 parameters present in both" % len(SPEC_PARAMS))
+
+print("4. Traversability weights and limits: header vs traversability.yaml")
+
+
+def cpp_struct_defaults(text, struct):
+    """double/bool members with brace-initialised defaults in a struct."""
+    m = re.search(r"struct\s+%s\s*\{(.*?)\n\};" % struct, text, re.S)
+    if not m:
+        fail("could not find struct %s in traversability_core.hpp" % struct)
+        return {}
+    return {n: float(v) for n, v in
+            re.findall(r"double\s+(\w+)\s*\{\s*([-\d.eE+]+)\s*\}", m.group(1))}
+
+
+trav_hpp = read(TRAV_HPP)
+trav_yaml = read(TRAV_YAML)
+try:
+    import yaml as _yaml
+    trav_params = _yaml.safe_load(trav_yaml)["traversability_fusion"]["ros__parameters"]
+except Exception as exc:                                    # noqa: BLE001
+    fail("could not parse traversability.yaml: %s" % exc)
+    trav_params = {}
+
+for struct, section in (("Weights", "weights"), ("Limits", "limits")):
+    cpp_vals = cpp_struct_defaults(trav_hpp, struct)
+    yaml_vals = trav_params.get(section, {})
+    if not cpp_vals:
+        continue
+    if not yaml_vals:
+        fail("traversability.yaml has no '%s' section" % section)
+        continue
+    for name, cval in sorted(cpp_vals.items()):
+        yval = yaml_vals.get(name)
+        if yval is None:
+            fail("%s.%s missing from traversability.yaml" % (section, name))
+        elif abs(float(yval) - cval) > 1e-12:
+            fail("%s.%s: header default=%g, yaml=%g" % (section, name, cval, yval))
+        else:
+            ok("%-8s %-20s %g" % (section, name, cval))
+    extra = set(yaml_vals) - set(cpp_vals)
+    if extra:
+        fail("traversability.yaml %s has keys the header does not: %s"
+             % (section, sorted(extra)))
 
 print()
 if failures:
