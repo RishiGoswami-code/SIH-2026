@@ -40,6 +40,37 @@ all: `drishti_perception.taxonomy` is imported directly from the workspace.
 
 ---
 
+## The browser lab
+
+The tkinter demo replays fixed scenarios. The lab lets you build the terrain
+yourself and watch the system react — no install, one file, opens anywhere.
+
+```bash
+python tools/build_page.py --out web/drishti_lab.html
+```
+
+Draw with the palette on the left — stone, boulder, ditch, slope, steep bank,
+gravel, mud, water, tree, wall — drag the start and goal anywhere, adjust the
+brush, then press **Run**. The left canvas is the world; the right is what the
+vehicle believes, filled in only where the sensor cone has actually swept. The
+trace log records every state change with its evidence, and the four fault
+buttons let you break a sensor mid-run and watch the supervisor catch it.
+
+**The page runs its own logic in JavaScript**, because that is what makes it
+editable. A second port is a second chance to drift, so
+`tools/parity_fixture.cpp` bakes 520 C++ decisions into the page and the page
+re-runs them on load. The header says `logic verified against C++ · 520/520`,
+or it says the count that disagreed. It cannot quietly demonstrate something
+other than the shipping system.
+
+That check is worth one warning. The fixture prints its *inputs* at `%.9g` and
+round-trips them through that decimal form before C++ evaluates them, so
+JavaScript parses bit-identical doubles — but its *outputs* must print at
+`%.17g`. The first build printed both at `%.9g` and reported 124 mismatches
+that were entirely an artefact of the truncated expected values.
+
+---
+
 ## What you are looking at
 
 Three panels:
@@ -149,7 +180,15 @@ prototype/
 └── tools/
     ├── parity_oracle.cpp        emits the C++ answers
     ├── check_parity.py          proves the ports match  (8000 cases)
+    ├── parity_fixture.cpp       520 C++ decisions the browser checks itself on
+    ├── build_page.py            builds the lab page
+    ├── export_runs.py           records scenario replays as JSON
     └── test_demo.py             pins what the demo claims  (43 checks)
+
+web/
+├── lab_template.html            the lab, minus the fixture
+├── parity_fixture.json          the 520 baked decisions
+└── drishti_lab.html             built page — this is what gets published
 ```
 
 ## Tests
