@@ -14,12 +14,14 @@ setup(
     zip_safe=True,
     maintainer='The Vikings',
     maintainer_email='team@thevikings.example',
-    description='Localisation and mission metrics for DRISHTI-UGV.',
+    description='Evaluation harness for DRISHTI-UGV: localisation metrics, '
+                'stop-latency measurement and fault injection.',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'evaluate_trajectory = drishti_eval.evaluate_trajectory:main',
+            'fault_injector = drishti_eval.fault_injector_node:main',
         ],
     },
 )

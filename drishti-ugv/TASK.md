@@ -157,13 +157,22 @@ odometry and Nav2.
 - [x] Implement all seven stop/slow conditions with fixed evaluation order — *and corrected the order; SPEC.md §9.1 had a defect (D13)*
 - [x] Move every threshold into one params file, logged at startup
 - [x] Unit-test the decision logic **without ROS running** — *377 checks, clean under `-Werror`*
-- [ ] Build the Failure world: frozen camera, stale depth, SLAM loss, invalid commands
-- [ ] Measure stop latency from fault injection to blocked command
+- [x] Build the Failure world: frozen camera, stale depth, SLAM loss, invalid commands — *`drishti_eval/faults.py`: 8 scenarios covering T16–T19 plus a NaN-command case; schedule logic tested, injector node **uncompiled***
+- [x] Measure stop latency from fault injection to blocked command — *`drishti_eval/latency.py`, tested; refuses to measure from a stationary baseline and summarises on the **worst** case, not the mean*
 
 **Acceptance**
-- T16–T19 (camera dropout, depth dropout, SLAM loss, no valid path) all end in a safe halt.
-- Stop latency < 200 ms, reported from logs.
-- Decision logic has unit tests that run in CI without a simulator.
+- T16–T19 (camera dropout, depth dropout, SLAM loss, no valid path) all end in a safe halt. — **open**, needs a running stack
+- Stop latency < 200 ms, reported from logs. — **open**; the measurement exists and is tested, the number does not
+- [x] Decision logic has unit tests that run in CI without a simulator. — *377 checks on the supervisor core, 111 on the harness*
+
+> **A gap this phase found and did not close.** `faults.py` distinguishes a
+> camera that goes *silent* from one that *freezes* — keeps publishing the same
+> image with a fresh timestamp. SPEC.md §9 catches silence through
+> `t_camera_stale`, but nothing in the supervisor notices that frame content
+> has stopped changing, so a frozen camera would read as perfectly healthy.
+> T16 as written only tests the easy half. Closing this needs either a content
+> hash in the perception health report or a frame-difference check; both are
+> new work and neither is in TASK.md yet.
 
 **Do not yet:** hardware.
 

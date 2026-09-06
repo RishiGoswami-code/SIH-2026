@@ -51,6 +51,7 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 16 | `tools/check_sim_assets.py` — worlds parse, required gz systems present, every model has collision geometry; negative-tested | 6 Sep 2026 |
 | 17 | **Phase 4 assets**: `drishti_perception` — frozen 19-class SPEC.md §5.2 vocabulary, perception health, nearest-hazard distance. **198 checks, 0 failures**; detector wrapper and ROS node written, not run | 7 Sep 2026 |
 | 18 | `check_contract_sync.py` extended to cross-package rules: SPEC.md §6.2 unknown cost, and staleness agreement between supervisor and perception; both negative-tested | 7 Sep 2026 |
+| 19 | **Phase 5 closed out**: fault schedules for T16–T19 and emergency-stop latency measurement — **111 checks, 0 failures**; injector node written, not run | 7 Sep 2026 |
 
 ## In progress
 
@@ -67,10 +68,10 @@ behind them.
 | 2 Visual SLAM | `drishti_eval` metrics, RTAB-Map config, Medium world | **64 checks** on the metrics | ✗ |
 | 3 Traversability | cost function, fusion node, Nav2 layer, Hard world | **1217 checks** on the cost function | ✗ |
 | 4 Perception | taxonomy, health, obstacle distance, detector, node | **198 checks** on the pure logic | ✗ |
-| 5 Safety | supervisor core, ROS node | **377 checks** on the core | node ✗ |
+| 5 Safety | supervisor core, fault schedules, latency measurement | **377 + 111 checks** | nodes ✗ |
 
-`python tools/run_checks.py` runs the seven Python suites; the two C++ suites
-need a compiler and run separately. Currently **7/7, 377/377 and 1217/1217**.
+`python tools/run_checks.py` runs the eight Python suites; the two C++ suites
+need a compiler and run separately. Currently **8/8, 377/377 and 1217/1217**.
 
 The pattern that keeps working: put the judgement in a core with no ROS
 dependency, and the plumbing in a thin wrapper. The cores are the parts that
@@ -200,6 +201,7 @@ Decisions with consequences. Append; do not rewrite history.
 | D15 | 6 Sep 2026 | **Gazebo Harmonic becomes the primary simulator; Isaac Sim held as contingent** | The development machine is a Lenovo LOQ with an RTX 3050 laptop GPU, 4–6 GB VRAM. NVIDIA's live requirements page (re-checked 6 Sep 2026) sets the Isaac Sim minimum at RTX 4080 / 16 GB VRAM / 32 GB RAM and warns that sensor-heavy workloads suffer below it — a stereo pair, depth and IMU over randomised terrain is precisely that. SETUP.md §1.2: decide, record, move | Yes — reverts if a qualifying GPU is obtained |
 | D16 | 6 Sep 2026 | **`elevation_mapping_cupy` restored as the terrain layer; D12 reversed** | The RTX 3050 provides CUDA, which the previously audited Intel Iris Xe did not. The CPU `grid_map` fallback is no longer forced — it returns to being a fallback | Yes |
 | D17 | 6 Sep 2026 | **Build the whole stack offline first; defer every install** | The team has no machine set up yet and will rent AWS GPU later. Writing assets ahead of the toolchain is only safe if the claim "this works" is never made on their behalf, so each phase records what was statically checked and what was not, and every uncompiled file carries an UNVERIFIED banner. The risk accepted is a batch of API-level fixes at first build, concentrated in the ROS wrappers | Yes |
+| D18 | 7 Sep 2026 | **A frozen camera is not covered by SPEC.md §9** | `t_camera_stale` catches a camera that goes silent, but not one that keeps republishing the same image with a fresh timestamp. Nothing in the supervisor notices that frame content has stopped changing, so a frozen camera reads as healthy. Recorded as a known gap rather than designed around; `faults.py` includes the scenario so it fails visibly when it is run | Open — needs a content hash or frame-difference check |
 
 ---
 

@@ -4,9 +4,12 @@
   <name>drishti_eval</name>
   <version>0.1.0</version>
   <description>
-    Evaluation harness: localisation error (ATE, RPE, drift) and, later,
-    mission-level outcomes. Only the bag reader imports ROS; the metrics are
-    plain numpy so they can be tested without an install.
+    Evaluation harness: localisation error (ATE, RPE, drift), emergency-stop
+    latency, and fault injection for the T16-T19 failure scenarios.
+
+    Only bag_reader and fault_injector_node import ROS. The metrics, the
+    latency measurement and the fault schedules are plain Python and are tested
+    without an install.
   </description>
 
   <!-- TODO: replace with a real team contact before the repository is shared. -->
