@@ -30,6 +30,10 @@ uint8 REASON_OBSTACLE_EMERGENCY = 4
 uint8 REASON_LOW_CONFIDENCE = 5
 uint8 REASON_PATH_INVALID = 6
 uint8 REASON_COMMAND_INVALID = 7
+# Frames keep arriving with fresh timestamps but the content has stopped
+# changing. Distinct from CAMERA_STALE, which is silence: a frozen camera
+# looks perfectly alive, which is what makes it dangerous (D18).
+uint8 REASON_CAMERA_FROZEN = 8
 
 uint8 reason
 string detail                    # human-readable, for logs and the operator view
@@ -44,6 +48,7 @@ float32 commanded_angular_z      # rad/s actually published
 # Recorded even when action is ACTION_PASS, so a run can be replayed and the
 # decision boundary inspected without re-running perception.
 float32 rgb_age                  # s since last RGB frame
+float32 rgb_static_for           # s the RGB content has been unchanged
 float32 depth_age                # s since last depth frame
 float32 pose_covariance_max      # largest diagonal term considered
 float32 nearest_obstacle         # m; NaN when unknown

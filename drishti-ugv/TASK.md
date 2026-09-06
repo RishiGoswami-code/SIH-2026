@@ -182,19 +182,25 @@ odometry and Nav2.
 
 **Artefact:** hundreds of automated missions with an auto-generated metrics report.
 
-- [ ] Implement the scenario runner in `drishti_eval` (headless, seeded, repeatable)
-- [ ] Implement domain randomisation (SPEC.md §10.3)
-- [ ] Implement all metrics in EVALUATION.md §2
-- [ ] Automate the full scenario catalog T01–T20
+> **The harness is built and tested (2571 checks). Nothing has been run, so
+> there are no numbers.** Everything below that produces a *number* rather than
+> a *mechanism* is still open, and will stay open until a machine exists.
+
+- [x] Implement the scenario runner in `drishti_eval` (headless, seeded, repeatable) — *generation and planning done; the executor needs ROS*
+- [x] Implement domain randomisation (SPEC.md §10.3) — *sun, ambient, camera noise, depth dropout, friction; envelope asserted by test*
+- [x] Implement all metrics in EVALUATION.md §2 — *ATE/RPE/drift, stop latency, outcome classification, suite roll-up*
+- [ ] Automate the full scenario catalog T01–T20 — *T01–T07 and T16–T19 covered; T08–T15 and T20 need the Dynamic and Adversarial worlds*
 - [ ] Run ≥ 100 randomised missions; then scale toward 1000
-- [ ] Generate a per-run report and a suite summary
+- [x] Generate a per-run report and a suite summary — *`report.py` and `outcome.format_summary`*
 - [ ] Triage failures by category; feed fixes back into Phases 3–5
 - [ ] Record the headline numbers in STATUS.md
 
 **Acceptance**
-- Collision-free completion ≥ 95% on the randomised suite.
-- Goal completion ≥ 97%.
-- The report regenerates from a single command, from bags plus ground truth.
+- Collision-free completion ≥ 95% on the randomised suite. — **open**, no runs
+- Goal completion ≥ 97%. — **open**, no runs
+- The report regenerates from a single command, from bags plus ground truth. —
+  *plan side done: `python -m drishti_eval.plan_suite --count 100 --json plan.json`
+  reproduces any suite from two numbers; the bag-reading side needs ROS*
 
 **Do not yet:** a real UGV.
 

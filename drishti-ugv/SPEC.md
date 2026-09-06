@@ -4,7 +4,7 @@ Technical specification. This is the contract every node in the system is
 written against. If an implementation and this document disagree, one of them
 is a bug — decide which, then fix it here first.
 
-Last updated: 4 September 2026
+Last updated: 7 September 2026
 
 ---
 
@@ -12,7 +12,7 @@ Last updated: 4 September 2026
 
 ```
                         ┌──────────────────────────┐
-                        │        ISAAC SIM         │
+                        │     GAZEBO HARMONIC      │
                         │  UGV + terrain + sensors │
                         │  RGB / depth / IMU / odom│
                         └────────────┬─────────────┘
@@ -356,6 +356,7 @@ decisions.
 if localization_lost:                    STOP
 elif depth_stale:                        STOP
 elif camera_stale:                       STOP
+elif frames_static > t_frame_static:     STOP
 elif obstacle_distance < d_emergency:    STOP
 elif path_is_invalid:                    STOP
 elif command_not_finite:                 STOP
@@ -390,6 +391,7 @@ reason code on `/safety/state`.
 | Depth timestamp older than `t_depth_stale` | STOP | obstacle distance may be invalid |
 | Localisation lost or covariance above threshold | STOP | pose-dependent navigation is unsafe |
 | Lethal obstacle inside `d_emergency` | STOP | avoid collision |
+| RGB content unchanged for `t_frame_static` | STOP | the camera is frozen; see below |
 | Perception confidence below `c_critical` | SLOW | reduce risk while gathering information |
 | No valid path | STOP / RECOVER | do not drive blindly |
 | Planner command invalid (NaN, out of range) | STOP | protect the motor interface |
@@ -407,11 +409,31 @@ All thresholds live in one params file and are logged at startup with the run.
 | `v_max`, `v_slow` | normal and reduced speed limits |
 | `cov_max` | pose covariance ceiling before "lost" |
 | `watchdog_period` | supervisor tick; bounds stop latency |
+| `t_frame_static` | max seconds of unchanging RGB content before STOP |
 | `t_pose_stale` | max age of a localisation pose |
 | `t_plan_stale` | max age of a `/plan` before it is unusable |
 | `t_cmd_stale` | max age of a Nav2 command before STOP |
 
-The last three were added on 5 September 2026 (D13). The original list gave
+> **Liveness is not freshness (added 7 September 2026, D19).** `t_camera_stale`
+> catches a camera that goes *silent*. It cannot catch one that *freezes* --
+> republishing a single image with a fresh timestamp -- because the age never
+> grows. That failure presents as a perfectly healthy camera while the vehicle
+> drives on a view of the world that is minutes old, and it is the more
+> dangerous of the two.
+>
+> Perception therefore reports `rgb_static_for` on `/perception/health`, from a
+> per-frame content signature, and the supervisor stops on it independently of
+> `rgb_age`. `t_frame_static` is deliberately far longer than `t_camera_stale`:
+> a motionless vehicle looking at a static scene through a noiseless simulated
+> camera legitimately repeats frames. A spurious trip produces a STOP, which is
+> the safe direction to be wrong in.
+>
+> Absence of the signal is **not** treated as a freeze. A perception build too
+> old to publish it leaves the value at zero, and silence is already covered by
+> the health message itself going stale.
+
+`t_pose_stale`, `t_plan_stale` and `t_cmd_stale` were added on 5 September
+2026 (D13). The original list gave
 staleness limits for the camera and depth streams only; the supervisor also
 depends on the pose, the plan and the command stream, and without limits on
 those a silent planner or a dead Nav2 would leave it forwarding a stale command
@@ -430,7 +452,7 @@ indefinitely — a direct breach of invariant 9.4.2.
 
 ## 10. Simulation
 
-Isaac Sim is a **test laboratory**, not a visualisation tool.
+The simulator is a **test laboratory**, not a visualisation tool.
 
 ### 10.1 Escalation ladder
 
@@ -495,7 +517,7 @@ and path deviation are computed objectively rather than eyeballed.
 
 ```
 SIMULATION
-Isaac Sim → ROS 2 → RTAB-Map → traversability → Nav2 → supervisor
+Gazebo → ROS 2 → RTAB-Map → traversability → Nav2 → supervisor
                        │
                        ▼
               hundreds/thousands of missions

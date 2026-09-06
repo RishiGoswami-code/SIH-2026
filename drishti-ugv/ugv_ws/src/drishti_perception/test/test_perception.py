@@ -269,6 +269,79 @@ def test_staleness_thresholds_are_respected():
     CHECK(not stale.rgb_ok)
 
 
+def test_a_changing_camera_never_looks_frozen():
+    case("a changing camera never looks frozen")
+    tr = H.FrameChangeTracker()
+    for i in range(50):
+        static = tr.update("frame-%d" % i, i * 0.1)
+        CHECK(static == 0.0, "changed content must reset the clock")
+
+
+def test_a_frozen_camera_accumulates_static_time():
+    case("a frozen camera accumulates static time")
+    # D18/D19: this is the signal t_camera_stale cannot produce. The stamps
+    # keep advancing; only the content stands still.
+    tr = H.FrameChangeTracker()
+    tr.update("same", 0.0)
+    CLOSE(tr.update("same", 1.0), 1.0)
+    CLOSE(tr.update("same", 2.5), 2.5)
+    CLOSE(tr.update("same", 10.0), 10.0)
+    # One genuinely new frame clears it.
+    CLOSE(tr.update("different", 10.1), 0.0)
+    CLOSE(tr.update("different", 11.1), 1.0)
+
+
+def test_the_first_frame_is_not_immediately_static():
+    case("the first frame is not immediately static")
+    tr = H.FrameChangeTracker()
+    CLOSE(tr.update("first", 5.0), 0.0)
+
+
+def test_a_missing_signature_does_not_clear_a_freeze():
+    case("a missing signature does not clear a freeze")
+    # If the signature path breaks, it must not look like fresh content --
+    # that would let a bug mask the very failure this detects.
+    tr = H.FrameChangeTracker()
+    tr.update("same", 0.0)
+    tr.update("same", 2.0)
+    CLOSE(tr.update(None, 3.0), 3.0, 1e-12, "still frozen")
+
+
+def test_a_non_finite_time_does_not_corrupt_the_tracker():
+    case("a non-finite time does not corrupt the tracker")
+    tr = H.FrameChangeTracker()
+    tr.update("same", 0.0)
+    tr.update("same", 2.0)
+    tr.update("same", float("nan"))
+    CLOSE(tr.update("same", 3.0), 3.0)
+
+
+def test_reset_clears_the_tracker():
+    case("reset clears the tracker")
+    tr = H.FrameChangeTracker()
+    tr.update("same", 0.0)
+    tr.update("same", 5.0)
+    tr.reset()
+    CLOSE(tr.update("same", 6.0), 0.0)
+
+
+def test_static_duration_reaches_the_health_report():
+    case("static duration reaches the health report")
+    h = H.compute(base_stats(rgb_static_for=4.2))
+    CLOSE(h.rgb_static_for, 4.2)
+    # A frozen camera still looks perfectly live on the age fields; that is the
+    # whole point of carrying a separate signal.
+    CHECK(h.rgb_ok, "a frozen camera reports fresh")
+
+
+def test_a_missing_static_duration_defaults_to_zero():
+    case("a missing static duration defaults to zero")
+    # Absence must not stop the vehicle by itself: silence is already covered
+    # by the health message going stale.
+    CLOSE(H.compute(base_stats()).rgb_static_for, 0.0)
+    CLOSE(H.compute(base_stats(rgb_static_for=float("nan"))).rgb_static_for, 0.0)
+
+
 # =========================================================== obstacle
 def depth_image(fill=5.0, shape=(120, 160)):
     return np.full(shape, float(fill))

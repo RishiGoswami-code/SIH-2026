@@ -61,6 +61,7 @@ class PerceptionNode(Node):
         self.declare_parameter("t_camera_stale", 0.30)
         self.declare_parameter("t_depth_stale", 0.30)
         self.declare_parameter("frame_id", "camera_left_optical")
+        self.declare_parameter("frame_signature_stride", 16)
 
         self.detector = Detector(
             weights=self.get_parameter("weights").value,
@@ -70,6 +71,8 @@ class PerceptionNode(Node):
 
         self.bridge = CvBridge()
         self.lock = threading.Lock()
+        self.frame_change = H.FrameChangeTracker()
+        self.rgb_static_for = 0.0
 
         self.last_rgb_stamp: Optional[float] = None
         self.last_depth_stamp: Optional[float] = None
@@ -131,9 +134,15 @@ class PerceptionNode(Node):
                 self.pipeline_ok = False
             return
 
+        # Freeze detection runs BEFORE the model, and regardless of whether it
+        # loaded. A frozen camera is a sensor fault, not a perception fault,
+        # and it must still be caught when inference is unavailable (D19).
+        static_for = self.frame_change.update(self.frame_signature(frame), stamp)
+
         if not self.detector.loaded:
             with self.lock:
                 self.last_rgb_stamp = stamp
+                self.rgb_static_for = static_for
                 self.pipeline_ok = False
             return
 
@@ -146,6 +155,7 @@ class PerceptionNode(Node):
 
         with self.lock:
             self.last_rgb_stamp = stamp
+            self.rgb_static_for = static_for
             self.detections = detections
             self.latency_ms = latency_ms
             self.pipeline_ok = ok
@@ -171,6 +181,25 @@ class PerceptionNode(Node):
         with self.lock:
             self.last_depth_stamp = stamp
             self.depth = depth
+
+    def frame_signature(self, frame: np.ndarray):
+        """A cheap, deterministic fingerprint of the frame's content.
+
+        Subsampled rather than hashed over every pixel: this runs on every
+        frame inside the perception budget, and a stride-16 sample of a
+        640x480 image is 1200 values -- enough that two genuinely different
+        scenes cannot collide in practice, cheap enough to ignore.
+
+        Returns None on failure rather than a constant. A constant would look
+        like frozen content and stop the vehicle on a bug in this function;
+        None leaves the tracker's existing verdict untouched.
+        """
+        try:
+            stride = max(1, int(self.get_parameter("frame_signature_stride").value))
+            sample = np.asarray(frame)[::stride, ::stride]
+            return hash(sample.tobytes())
+        except Exception:                             # noqa: BLE001
+            return None
 
     # ------------------------------------------------------------ publishing
     def publish_detections(self, header, detections: List[Detection]) -> None:
@@ -222,6 +251,7 @@ class PerceptionNode(Node):
                 last_depth_stamp=self.last_depth_stamp,
                 pipeline_ok=self.pipeline_ok,
                 detection_confidences=tuple(d.confidence for d in self.detections),
+                rgb_static_for=self.rgb_static_for,
                 latency_ms=self.latency_ms)
 
         report = H.compute(
@@ -250,6 +280,7 @@ class PerceptionNode(Node):
         msg.latency_ms = float(
             0.0 if report.latency_ms != report.latency_ms else report.latency_ms)
         msg.detection_count = int(report.detection_count)
+        msg.rgb_static_for = float(report.rgb_static_for)
         self.pub_health.publish(msg)
 
 

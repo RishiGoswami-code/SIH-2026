@@ -49,6 +49,7 @@ enum class Reason : std::uint8_t
   LOW_CONFIDENCE = 5,
   PATH_INVALID = 6,
   COMMAND_INVALID = 7,
+  CAMERA_FROZEN = 8,
 };
 
 const char * to_string(Action a) noexcept;
@@ -68,6 +69,20 @@ struct Params
   double cov_max{0.50};           ///< max pose covariance diagonal before "lost"
   double watchdog_period{0.02};   ///< s, supervisor tick
 
+  /// Seconds of unchanging RGB content before the camera is treated as frozen.
+  ///
+  /// D18/D19. `t_camera_stale` catches a camera that goes silent; it cannot
+  /// catch one that republishes the same image with a fresh stamp, because the
+  /// age never grows. That failure looks perfectly healthy and is the more
+  /// dangerous of the two.
+  ///
+  /// Deliberately far longer than t_camera_stale. A genuinely motionless
+  /// vehicle looking at a static scene through a noiseless simulated camera
+  /// produces identical frames, so a short threshold would fire constantly in
+  /// simulation. If it does fire spuriously the result is a STOP, which is the
+  /// safe direction to be wrong in.
+  double t_frame_static{2.0};     ///< s
+
   /// Rejects a configuration that would silently weaken the safety envelope.
   /// Returns false and, if \p why is non-null, sets it to the first problem.
   bool valid(std::string * why = nullptr) const;
@@ -82,6 +97,13 @@ struct Inputs
 
   double last_rgb_stamp{kNever};         ///< s, sensor stamp of last RGB frame
   double last_depth_stamp{kNever};       ///< s, sensor stamp of last depth frame
+
+  /// Seconds the RGB content has been unchanged, from /perception/health.
+  /// Defaults to 0 rather than to a large value: absence of this signal must
+  /// not by itself stop the vehicle, because a perception node too old to
+  /// publish it would otherwise be undriveable. Silence is already covered by
+  /// the health message going stale.
+  double rgb_static_for{0.0};
 
   bool pose_valid{false};                ///< localisation produced a pose at all
   double pose_covariance_max{kInf};      ///< largest diagonal term
@@ -106,6 +128,7 @@ struct Decision
 
   double rgb_age{kInf};       ///< s, as computed this tick
   double depth_age{kInf};     ///< s, as computed this tick
+  double rgb_static_for{0.0}; ///< s, as reported this tick
 };
 
 class SupervisorCore
@@ -122,11 +145,12 @@ public:
   ///   1. localisation lost         -> STOP
   ///   2. depth stale               -> STOP
   ///   3. camera stale              -> STOP
-  ///   4. obstacle within d_emergency -> STOP
-  ///   5. no valid path             -> STOP
-  ///   6. command not finite        -> STOP
-  ///   7. confidence < c_critical   -> SLOW
-  ///   8. otherwise                 -> PASS
+  ///   4. camera frozen             -> STOP
+  ///   5. obstacle within d_emergency -> STOP
+  ///   6. no valid path             -> STOP
+  ///   7. command not finite        -> STOP
+  ///   8. confidence < c_critical   -> SLOW
+  ///   9. otherwise                 -> PASS
   ///
   /// This DIVERGES from the SPEC.md section 9.1 pseudocode, which places the
   /// low-confidence SLOW branch ahead of the path-validity check under a
@@ -138,7 +162,7 @@ public:
   ///
   /// Ordering is load-bearing in one other place: a NaN nearest_obstacle is
   /// read as "nothing found in range", not as a fault. That is only safe
-  /// because depth staleness (3) is already ruled out by the time step 4 runs.
+  /// because depth staleness (2) is already ruled out by the time step 5 runs.
   Decision evaluate(const Inputs & in) const;
 
   const Params & params() const noexcept {return params_;}

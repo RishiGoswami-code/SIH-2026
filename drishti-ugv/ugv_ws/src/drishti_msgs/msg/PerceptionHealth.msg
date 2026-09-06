@@ -15,6 +15,12 @@ float32 depth_age                # s since last depth frame
 bool rgb_ok                      # rgb_age <= t_camera_stale
 bool depth_ok                    # depth_age <= t_depth_stale
 
+# Seconds the RGB content has been unchanged. Liveness is not enough: a frozen
+# camera republishes the same image with a fresh stamp, so rgb_age stays small
+# while the view of the world is minutes old. The supervisor stops on this
+# independently of rgb_age (D18/D19).
+float32 rgb_static_for
+
 float32 mean_confidence          # 0..1 across this frame's outputs
 float32 latency_ms               # frame arrival -> output published
 uint16 detection_count

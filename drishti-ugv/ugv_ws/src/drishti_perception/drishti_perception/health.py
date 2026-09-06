@@ -45,6 +45,60 @@ from typing import List, Optional, Sequence
 NEVER_SEEN_AGE = 1.0e9
 
 
+class FrameChangeTracker:
+    """How long the camera content has been unchanged.
+
+    D18/D19. A camera that goes silent is caught by `t_camera_stale`. A camera
+    that FREEZES -- republishing one image with a fresh timestamp -- is not:
+    the age never grows, so it looks perfectly healthy while the view of the
+    world becomes arbitrarily old. Liveness and freshness are different
+    questions, and only this one answers the second.
+
+    The caller supplies a cheap signature per frame (a downsampled hash, a
+    checksum, anything deterministic). This class only tracks how long it has
+    stayed the same.
+
+    A real camera never produces two identical frames -- sensor noise alone
+    guarantees that -- so in the field this is close to a pure freeze detector.
+    In simulation a noiseless camera on a motionless vehicle CAN legitimately
+    repeat frames, which is why the threshold in drishti.yaml is seconds rather
+    than milliseconds, and why a spurious trip is acceptable: it produces a
+    STOP, which is the safe direction to be wrong in.
+    """
+
+    def __init__(self) -> None:
+        self._signature = None
+        self._since: Optional[float] = None
+        self._last_t: Optional[float] = None
+
+    def update(self, signature, t: float) -> float:
+        """Record a frame, and return how long content has been unchanged."""
+        if not math.isfinite(t):
+            return self.static_for(self._last_t if self._last_t else 0.0)
+
+        if signature is None:
+            # No signature computed for this frame. Do not claim the content
+            # changed -- that would let a broken signature path mask a freeze --
+            # but do not advance the clock on evidence we do not have either.
+            return self.static_for(t)
+
+        if self._signature is None or signature != self._signature:
+            self._signature = signature
+            self._since = t
+        self._last_t = t
+        return self.static_for(t)
+
+    def static_for(self, now: float) -> float:
+        if self._since is None or not math.isfinite(now):
+            return 0.0
+        return max(now - self._since, 0.0)
+
+    def reset(self) -> None:
+        self._signature = None
+        self._since = None
+        self._last_t = None
+
+
 @dataclass
 class FrameStats:
     """What the perception node knows at the moment it publishes health."""
@@ -63,6 +117,11 @@ class FrameStats:
     #: Wall time from frame arrival to outputs ready.
     latency_ms: float = float("nan")
 
+    #: Seconds the RGB content has been unchanged, from FrameChangeTracker.
+    #: Defaults to 0 so a pipeline that does not compute it cannot stop the
+    #: vehicle by omission.
+    rgb_static_for: float = 0.0
+
 
 @dataclass
 class Health:
@@ -75,6 +134,7 @@ class Health:
     mean_confidence: float
     latency_ms: float
     detection_count: int
+    rgb_static_for: float = 0.0
     #: Why the confidence took the value it did. Logged, not published: it is
     #: for the person reading a bag six weeks later.
     confidence_basis: str = ""
@@ -163,5 +223,7 @@ def compute(stats: FrameStats,
         mean_confidence=confidence,
         latency_ms=stats.latency_ms,
         detection_count=len(_clean(stats.detection_confidences)),
+        rgb_static_for=(stats.rgb_static_for
+                        if math.isfinite(stats.rgb_static_for) else 0.0),
         confidence_basis=basis,
     )

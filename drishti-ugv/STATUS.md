@@ -52,6 +52,8 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 17 | **Phase 4 assets**: `drishti_perception` — frozen 19-class SPEC.md §5.2 vocabulary, perception health, nearest-hazard distance. **198 checks, 0 failures**; detector wrapper and ROS node written, not run | 7 Sep 2026 |
 | 18 | `check_contract_sync.py` extended to cross-package rules: SPEC.md §6.2 unknown cost, and staleness agreement between supervisor and perception; both negative-tested | 7 Sep 2026 |
 | 19 | **Phase 5 closed out**: fault schedules for T16–T19 and emergency-stop latency measurement — **111 checks, 0 failures**; injector node written, not run | 7 Sep 2026 |
+| 20 | **D18 closed (D19)**: frozen-camera detection — `rgb_static_for` on `/perception/health`, `t_frame_static` in SPEC.md §9.3, new `CAMERA_FROZEN` reason. Supervisor now **388 checks** | 7 Sep 2026 |
+| 21 | **Phase 6 harness**: outcome classification, seeded mission generation, domain randomisation, suite roll-up — **2571 checks, 0 failures** | 7 Sep 2026 |
 
 ## In progress
 
@@ -68,10 +70,16 @@ behind them.
 | 2 Visual SLAM | `drishti_eval` metrics, RTAB-Map config, Medium world | **64 checks** on the metrics | ✗ |
 | 3 Traversability | cost function, fusion node, Nav2 layer, Hard world | **1217 checks** on the cost function | ✗ |
 | 4 Perception | taxonomy, health, obstacle distance, detector, node | **198 checks** on the pure logic | ✗ |
-| 5 Safety | supervisor core, fault schedules, latency measurement | **377 + 111 checks** | nodes ✗ |
+| 5 Safety | supervisor core, fault schedules, latency measurement | **388 + 111 checks** | nodes ✗ |
+| 6 Suite | outcome classification, seeded scenarios, roll-up | **2571 checks** | ✗ |
 
-`python tools/run_checks.py` runs the eight Python suites; the two C++ suites
-need a compiler and run separately. Currently **8/8, 377/377 and 1217/1217**.
+`python tools/run_checks.py` runs the nine Python suites; the two C++ suites
+need a compiler and run separately. Currently **9/9, 388/388 and 1217/1217** —
+roughly 4,900 assertions in total, none of which need ROS, a GPU or a
+simulator.
+
+**None of it has been run against a real system.** The harness can say what a
+number *means*; it cannot produce one.
 
 The pattern that keeps working: put the judgement in a core with no ROS
 dependency, and the plumbing in a thin wrapper. The cores are the parts that
@@ -84,10 +92,16 @@ The one exception remains the supervisor decision core: 377 checks, clean under
 
 ## Next actions
 
-Continue building offline: **Phase 6** (the mission harness — outcome
-classification, scenario generation and the metrics roll-up are pure logic and
-therefore testable here). Phase 5 is largely done already (D14); Phase 7
-optimisation and the remaining Phase 4 items need a running stack.
+Every phase that can be built without hardware now has been. What remains is
+work that needs a running system:
+
+- the Dynamic and Adversarial worlds (T08–T15, T20)
+- a segmenter, and semantic layers written into the elevation map
+- executing the suite and recording actual numbers
+- Phase 7 optimisation, which is meaningless before a profile exists
+
+The next real step is a machine: Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic,
+then `colcon build`.
 
 When a machine is available, in this order:
 
@@ -201,7 +215,8 @@ Decisions with consequences. Append; do not rewrite history.
 | D15 | 6 Sep 2026 | **Gazebo Harmonic becomes the primary simulator; Isaac Sim held as contingent** | The development machine is a Lenovo LOQ with an RTX 3050 laptop GPU, 4–6 GB VRAM. NVIDIA's live requirements page (re-checked 6 Sep 2026) sets the Isaac Sim minimum at RTX 4080 / 16 GB VRAM / 32 GB RAM and warns that sensor-heavy workloads suffer below it — a stereo pair, depth and IMU over randomised terrain is precisely that. SETUP.md §1.2: decide, record, move | Yes — reverts if a qualifying GPU is obtained |
 | D16 | 6 Sep 2026 | **`elevation_mapping_cupy` restored as the terrain layer; D12 reversed** | The RTX 3050 provides CUDA, which the previously audited Intel Iris Xe did not. The CPU `grid_map` fallback is no longer forced — it returns to being a fallback | Yes |
 | D17 | 6 Sep 2026 | **Build the whole stack offline first; defer every install** | The team has no machine set up yet and will rent AWS GPU later. Writing assets ahead of the toolchain is only safe if the claim "this works" is never made on their behalf, so each phase records what was statically checked and what was not, and every uncompiled file carries an UNVERIFIED banner. The risk accepted is a batch of API-level fixes at first build, concentrated in the ROS wrappers | Yes |
-| D18 | 7 Sep 2026 | **A frozen camera is not covered by SPEC.md §9** | `t_camera_stale` catches a camera that goes silent, but not one that keeps republishing the same image with a fresh timestamp. Nothing in the supervisor notices that frame content has stopped changing, so a frozen camera reads as healthy. Recorded as a known gap rather than designed around; `faults.py` includes the scenario so it fails visibly when it is run | Open — needs a content hash or frame-difference check |
+| D18 | 7 Sep 2026 | **A frozen camera is not covered by SPEC.md §9** | `t_camera_stale` catches a camera that goes silent, but not one that keeps republishing the same image with a fresh timestamp. Nothing in the supervisor notices that frame content has stopped changing, so a frozen camera reads as healthy. Recorded as a known gap rather than designed around; `faults.py` includes the scenario so it fails visibly when it is run | **CLOSED 7 Sep 2026 by D19** |
+| D19 | 7 Sep 2026 | **Frozen-camera detection added: `rgb_static_for` on `/perception/health`, `t_frame_static` in SPEC.md §9.3, and a new `CAMERA_FROZEN` reason code** | Closes D18. Liveness and freshness are different questions and `t_camera_stale` only answers the first. Perception fingerprints each frame; the supervisor stops when content stops changing, independently of age. Absence of the signal is not treated as a freeze, so an older perception build stays driveable | **No** — safety condition |
 
 ---
 

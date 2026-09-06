@@ -28,6 +28,8 @@ CHECKS = [
      "src/drishti_perception/test/test_perception.py"),
     ("safety harness (fault schedules, stop latency)",
      "src/drishti_eval/test/test_safety_harness.py"),
+    ("mission suite (outcome classification, seeded scenarios)",
+     "src/drishti_eval/test/test_suite.py"),
 ]
 
 results = []

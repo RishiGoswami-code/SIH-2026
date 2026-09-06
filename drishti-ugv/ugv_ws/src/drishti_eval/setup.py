@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'evaluate_trajectory = drishti_eval.evaluate_trajectory:main',
             'fault_injector = drishti_eval.fault_injector_node:main',
+            'plan_suite = drishti_eval.plan_suite:main',
         ],
     },
 )

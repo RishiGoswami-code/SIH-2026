@@ -40,6 +40,17 @@ safety_supervisor:
     # --- localisation health ----------------------------------------------
     cov_max: 0.50               # largest pose covariance diagonal before "lost"
 
+    # --- frozen camera (SPEC.md §9.3 addition, D19) -----------------------
+    # Liveness is not enough. A camera republishing one image with a fresh
+    # timestamp keeps rgb_age small forever while the view of the world grows
+    # arbitrarily old, and t_camera_stale cannot see it (D18).
+    #
+    # Much longer than t_camera_stale on purpose: a motionless vehicle looking
+    # at a static scene through a noiseless simulated camera produces identical
+    # frames, so a short threshold would fire constantly in simulation. A
+    # spurious trip here produces a STOP, which is the safe direction.
+    t_frame_static: 2.00        # s of unchanging RGB content before STOP
+
     # --- input staleness (SPEC.md §9.3 additions, D13) --------------------
     # SPEC.md §9.3 names thresholds for the camera and depth streams but not
     # for the other three inputs the supervisor depends on. Without these a

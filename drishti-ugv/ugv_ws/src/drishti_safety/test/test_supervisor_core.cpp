@@ -72,6 +72,7 @@ Inputs healthy(double now = 100.0)
   in.pose_covariance_max = 0.05;
   in.nearest_obstacle = 5.0;
   in.perception_confidence = 0.9;
+  in.rgb_static_for = 0.0;
   in.path_valid = true;
   in.cmd_linear_x = 0.5;
   in.cmd_angular_z = 0.2;
@@ -190,6 +191,64 @@ int main()
     in.last_rgb_stamp = in.now - 10.0;
     in.last_depth_stamp = in.now - 10.0;
     CHECK_DECISION(sup.evaluate(in), Action::STOP, Reason::DEPTH_STALE);
+  }
+
+  begin("a frozen camera stops the vehicle (D18/D19)");
+  {
+    // The failure t_camera_stale cannot see: frames keep arriving with fresh
+    // stamps, so rgb_age stays small while the view of the world is minutes
+    // old. Everything else about this tick is perfectly healthy.
+    Inputs in = healthy();
+    in.rgb_static_for = p.t_frame_static;
+    const Decision d = sup.evaluate(in);
+    CHECK_DECISION(d, Action::STOP, Reason::CAMERA_FROZEN);
+    CHECK(d.stop);
+    CHECK(d.linear_x == 0.0);
+    // The audit record must carry the number that drove the decision.
+    CHECK(std::fabs(d.rgb_static_for - p.t_frame_static) < 1e-12);
+  }
+
+  begin("a briefly static scene does not stop the vehicle");
+  {
+    Inputs in = healthy();
+    in.rgb_static_for = p.t_frame_static - 0.01;
+    CHECK_DECISION(sup.evaluate(in), Action::PASS, Reason::NONE);
+  }
+
+  begin("a missing static-duration signal cannot stop the vehicle by itself");
+  {
+    // A perception node too old to publish rgb_static_for leaves it at 0.
+    // That must not be read as a fault: silence is already covered by the
+    // health message going stale, and treating absence as a freeze would make
+    // an older perception build undriveable.
+    Inputs in = healthy();
+    in.rgb_static_for = 0.0;
+    CHECK_DECISION(sup.evaluate(in), Action::PASS, Reason::NONE);
+
+    in.rgb_static_for = kNaN;
+    CHECK_DECISION(sup.evaluate(in), Action::PASS, Reason::NONE);
+  }
+
+  begin("silence is checked before freeze");
+  {
+    // A camera that has gone silent AND was frozen before it died reports as
+    // stale, the simpler and more urgent diagnosis.
+    Inputs in = healthy();
+    in.last_rgb_stamp = in.now - 10.0;
+    in.rgb_static_for = 60.0;
+    CHECK_DECISION(sup.evaluate(in), Action::STOP, Reason::CAMERA_STALE);
+  }
+
+  begin("t_frame_static must exceed t_camera_stale");
+  {
+    Params bad = p;
+    bad.t_frame_static = bad.t_camera_stale;
+    std::string why;
+    CHECK(!bad.valid(&why));
+    bad = p; bad.t_frame_static = 0.0;
+    CHECK(!bad.valid(nullptr));
+    bad = p; bad.t_frame_static = kNaN;
+    CHECK(!bad.valid(nullptr));
   }
 
   begin("obstacle inside the emergency distance");

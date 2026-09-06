@@ -51,6 +51,7 @@ PERCEPTION_YAML = os.path.join(WS, "src", "drishti_bringup", "config",
 SPEC_PARAMS = {
     "t_camera_stale", "t_depth_stale", "d_emergency", "c_critical",
     "v_max", "v_slow", "cov_max", "watchdog_period",
+    "t_frame_static",
 }
 
 failures = []

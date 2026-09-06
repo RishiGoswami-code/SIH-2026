@@ -32,6 +32,7 @@ const char * to_string(Reason r) noexcept
     case Reason::LOW_CONFIDENCE: return "perception confidence below floor";
     case Reason::PATH_INVALID: return "no valid path";
     case Reason::COMMAND_INVALID: return "planner command invalid";
+    case Reason::CAMERA_FROZEN: return "camera frozen; frames unchanging";
   }
   return "unknown";
 }
@@ -71,6 +72,14 @@ bool Params::valid(std::string * why) const
   if (!(std::isfinite(watchdog_period) && watchdog_period > 0.0)) {
     return fail("watchdog_period must be finite and > 0");
   }
+  if (!(std::isfinite(t_frame_static) && t_frame_static > 0.0)) {
+    return fail("t_frame_static must be finite and > 0");
+  }
+  if (t_frame_static <= t_camera_stale) {
+    // Below the staleness window it would fire on ordinary frame timing rather
+    // than on a genuinely frozen stream.
+    return fail("t_frame_static must exceed t_camera_stale");
+  }
   return true;
 }
 
@@ -99,6 +108,7 @@ Decision SupervisorCore::evaluate(const Inputs & in) const
 
   d.rgb_age = stamp_age(in.now, in.last_rgb_stamp, params_.watchdog_period);
   d.depth_age = stamp_age(in.now, in.last_depth_stamp, params_.watchdog_period);
+  d.rgb_static_for = std::isfinite(in.rgb_static_for) ? in.rgb_static_for : 0.0;
 
   // --- 1. localisation ----------------------------------------------------
   if (!in.pose_valid ||
@@ -121,7 +131,19 @@ Decision SupervisorCore::evaluate(const Inputs & in) const
     return d;
   }
 
-  // --- 4. emergency geometry ----------------------------------------------
+  // --- 4. frozen camera ---------------------------------------------------
+  // Liveness is not enough. A camera republishing one image with a fresh stamp
+  // passes step 3 forever while the view of the world grows arbitrarily old
+  // (D18). Only a positive, finite report counts: a missing signal leaves
+  // rgb_static_for at 0 and cannot stop the vehicle on its own.
+  if (std::isfinite(in.rgb_static_for) &&
+    in.rgb_static_for >= params_.t_frame_static)
+  {
+    d.reason = Reason::CAMERA_FROZEN;
+    return d;
+  }
+
+  // --- 5. emergency geometry ----------------------------------------------
   // A non-finite distance means "nothing found in range", not "sensor broken":
   // a broken sensor was already caught by step 2.
   if (std::isfinite(in.nearest_obstacle) && in.nearest_obstacle < params_.d_emergency) {
@@ -129,20 +151,20 @@ Decision SupervisorCore::evaluate(const Inputs & in) const
     return d;
   }
 
-  // --- 5. planner has somewhere to go -------------------------------------
+  // --- 6. planner has somewhere to go -------------------------------------
   if (!in.path_valid) {
     d.reason = Reason::PATH_INVALID;
     return d;
   }
 
-  // --- 6. the command itself ----------------------------------------------
+  // --- 7. the command itself ----------------------------------------------
   // Checked before any forwarding path: clamping NaN yields NaN.
   if (!std::isfinite(in.cmd_linear_x) || !std::isfinite(in.cmd_angular_z)) {
     d.reason = Reason::COMMAND_INVALID;
     return d;
   }
 
-  // --- 7. confidence: the only non-stop branch ----------------------------
+  // --- 8. confidence: the only non-stop branch ----------------------------
   const bool slow =
     !std::isfinite(in.perception_confidence) ||
     in.perception_confidence < params_.c_critical;
