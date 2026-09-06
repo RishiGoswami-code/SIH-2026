@@ -30,6 +30,8 @@ CHECKS = [
      "src/drishti_eval/test/test_safety_harness.py"),
     ("mission suite (outcome classification, seeded scenarios)",
      "src/drishti_eval/test/test_suite.py"),
+    ("phase 7 gates (budgets, regression power)",
+     "src/drishti_eval/test/test_phase7.py"),
 ]
 
 results = []

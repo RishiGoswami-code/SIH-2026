@@ -54,6 +54,8 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 19 | **Phase 5 closed out**: fault schedules for T16–T19 and emergency-stop latency measurement — **111 checks, 0 failures**; injector node written, not run | 7 Sep 2026 |
 | 20 | **D18 closed (D19)**: frozen-camera detection — `rgb_static_for` on `/perception/health`, `t_frame_static` in SPEC.md §9.3, new `CAMERA_FROZEN` reason. Supervisor now **388 checks** | 7 Sep 2026 |
 | 21 | **Phase 6 harness**: outcome classification, seeded mission generation, domain randomisation, suite roll-up — **2571 checks, 0 failures** | 7 Sep 2026 |
+| 22 | **Phase 7 gates**: SPEC.md §8 budget checking (tail percentiles, not means) and optimisation regression testing with an explicit power check — **79 checks, 0 failures** | 7 Sep 2026 |
+| 23 | Hardware transfer contract (`config/hardware.yaml`, `hardware.launch.py`) now **machine-checked** by `check_wiring.py`; container definition written | 7 Sep 2026 |
 
 ## In progress
 
@@ -72,10 +74,11 @@ behind them.
 | 4 Perception | taxonomy, health, obstacle distance, detector, node | **198 checks** on the pure logic | ✗ |
 | 5 Safety | supervisor core, fault schedules, latency measurement | **388 + 111 checks** | nodes ✗ |
 | 6 Suite | outcome classification, seeded scenarios, roll-up | **2571 checks** | ✗ |
+| 7 Gates | budgets, regression power, hardware contract, container | **79 checks** | ✗ |
 
-`python tools/run_checks.py` runs the nine Python suites; the two C++ suites
-need a compiler and run separately. Currently **9/9, 388/388 and 1217/1217** —
-roughly 4,900 assertions in total, none of which need ROS, a GPU or a
+`python tools/run_checks.py` runs the ten Python suites; the two C++ suites
+need a compiler and run separately. Currently **10/10, 388/388 and 1217/1217** —
+roughly 5,000 assertions in total, none of which need ROS, a GPU or a
 simulator.
 
 **None of it has been run against a real system.** The harness can say what a
@@ -217,6 +220,7 @@ Decisions with consequences. Append; do not rewrite history.
 | D17 | 6 Sep 2026 | **Build the whole stack offline first; defer every install** | The team has no machine set up yet and will rent AWS GPU later. Writing assets ahead of the toolchain is only safe if the claim "this works" is never made on their behalf, so each phase records what was statically checked and what was not, and every uncompiled file carries an UNVERIFIED banner. The risk accepted is a batch of API-level fixes at first build, concentrated in the ROS wrappers | Yes |
 | D18 | 7 Sep 2026 | **A frozen camera is not covered by SPEC.md §9** | `t_camera_stale` catches a camera that goes silent, but not one that keeps republishing the same image with a fresh timestamp. Nothing in the supervisor notices that frame content has stopped changing, so a frozen camera reads as healthy. Recorded as a known gap rather than designed around; `faults.py` includes the scenario so it fails visibly when it is run | **CLOSED 7 Sep 2026 by D19** |
 | D19 | 7 Sep 2026 | **Frozen-camera detection added: `rgb_static_for` on `/perception/health`, `t_frame_static` in SPEC.md §9.3, and a new `CAMERA_FROZEN` reason code** | Closes D18. Liveness and freshness are different questions and `t_camera_stale` only answers the first. Perception fingerprints each frame; the supervisor stops when content stops changing, independently of age. Absence of the signal is not treated as a freeze, so an older perception build stays driveable | **No** — safety condition |
+| D20 | 7 Sep 2026 | **The randomised suite needs ~1470 missions per side to detect a 2-point regression, not the ~1000 TASK.md Phase 6 plans for** | Fell out of implementing the Phase 7 regression gate. At a 95% baseline the minimum detectable drop is 7.7 points at n=100, 5.4 at n=200, 2.4 at n=1000 and 2.0 at n=1470. Below that, "no significant regression" is not evidence of no regression, so the gate reports UNDERPOWERED and refuses to pass. Phase 6's target should rise, or the effect we agree to care about should | Open — a planning decision, not a code change |
 
 ---
 

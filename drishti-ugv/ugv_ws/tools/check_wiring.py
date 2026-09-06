@@ -16,6 +16,11 @@ invisible until something drives into a wall. This checks it without ROS:
   4. ground truth is read-only and never subscribed by the runtime graph
   5. /clock is bridged, or use_sim_time is a lie (SPEC.md 3.2 rule 4)
   6. every SPEC.md 4.1 input topic is actually bridged
+  7. no launch file remaps anything onto /cmd_vel
+  8. the SPEC.md 12 hardware contract still promises what the stack consumes,
+     keeps the camera in optical frames, keeps the base subscribe-only on
+     /cmd_vel, forbids GNSS, and orders the bring-up sequence with the e-stop
+     gate in it
 
     python tools/check_wiring.py
 """
@@ -174,6 +179,59 @@ if suspicious:
     fail("launch files remap near %s, check by hand: %s" % (CMD_OUT, suspicious))
 else:
     ok("no launch-level remapping onto %s" % CMD_OUT)
+
+print("\n8. hardware transfer contract (SPEC 12)")
+HARDWARE = os.path.join(WS, "src", "drishti_bringup", "config", "hardware.yaml")
+if not os.path.exists(HARDWARE):
+    fail("hardware.yaml is missing; SPEC 12 has no checkable contract")
+else:
+    hw = yaml.safe_load(open(HARDWARE, encoding="utf-8"))["hardware_contract"]
+
+    # The camera contract must name every SPEC 4.1 input the simulator bridges,
+    # or the transfer is not a driver swap and SPEC 12 is not true.
+    promised = {e["topic"] for e in hw["required_from_camera"]}
+    promised |= {e["topic"] for e in hw["required_from_base"]}
+    gap = SPEC_INPUTS - promised
+    if gap:
+        fail("hardware.yaml does not require %s, which the stack consumes in "
+             "simulation" % sorted(gap))
+    else:
+        ok("every SPEC 4.1 input has a hardware source")
+
+    # Optical frames, not mounting frames. Getting this wrong rotates every
+    # projected point by 90 degrees and looks like a terrain bug.
+    for entry in hw["required_from_camera"]:
+        frame = entry.get("frame", "")
+        if frame and frame.startswith("camera") and not frame.endswith("_optical"):
+            fail("%s is required in frame %r; camera data must arrive in an "
+                 "optical frame" % (entry["topic"], frame))
+
+    # /cmd_vel must be subscribe-only on the base side: the supervisor owns it.
+    base_cmd = [e for e in hw["required_from_base"] if e["topic"] == CMD_OUT]
+    if not base_cmd:
+        fail("hardware.yaml does not mention %s" % CMD_OUT)
+    elif base_cmd[0].get("direction") != "subscribe":
+        fail("%s is listed as %r for the base; it must be subscribe only"
+             % (CMD_OUT, base_cmd[0].get("direction")))
+    else:
+        ok("the base subscribes to %s and never publishes it" % CMD_OUT)
+
+    banned = [t for group in hw.get("forbidden", []) for t in group["topics"]]
+    if not banned:
+        fail("hardware.yaml forbids nothing; GNSS must be excluded explicitly")
+    else:
+        ok("%d GNSS topic(s) explicitly forbidden" % len(banned))
+
+    steps = [s["step"] for s in hw["bringup_sequence"]]
+    if steps != sorted(steps) or steps != list(range(1, len(steps) + 1)):
+        fail("bring-up sequence is not 1..N in order: %s" % steps)
+    else:
+        estop_steps = [s for s in hw["bringup_sequence"] if "requires" in s]
+        if not estop_steps:
+            fail("no bring-up step requires the external e-stop")
+        else:
+            ok("bring-up sequence is ordered; e-stop required from step %d"
+               % estop_steps[0]["step"])
 
 print()
 if failures:

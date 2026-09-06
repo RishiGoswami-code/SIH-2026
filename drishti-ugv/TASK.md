@@ -210,17 +210,23 @@ odometry and Nav2.
 
 **Artefact:** a profiled stack, and a bring-up plan executed only if a vehicle exists.
 
-- [ ] Profile CPU, GPU, RAM and VRAM under full load
+> **The gates are built; the profiling is not.** Everything here that judges a
+> measurement exists and is tested. Everything that *takes* one needs hardware.
+
+- [ ] Profile CPU, GPU, RAM and VRAM under full load — *`budgets.py` judges the samples; nothing produces them yet*
 - [ ] Reduce latency: model size, TensorRT, resolution, sensor rates
-- [ ] Re-run the suite after every optimisation to catch regressions
-- [ ] Containerise the validated stack
-- [ ] Write the sensor driver shim that reproduces the SPEC.md §4 contract
-- [ ] Execute the bring-up sequence in SPEC.md §12.1 — **strictly in order**
-- [ ] Mandatory external hardware e-stop from bring-up step 8 onward
+- [x] Re-run the suite after every optimisation to catch regressions — *`regression.py`: two-proportion test with an explicit power check; **underpowered is not a pass***
+- [x] Containerise the validated stack — *`docker/Dockerfile`, CUDA + ROS 2 Jazzy; **never built***
+- [x] Write the sensor driver shim that reproduces the SPEC.md §4 contract — *`config/hardware.yaml` + `hardware.launch.py`; the contract is machine-checked by `check_wiring.py`*
+- [ ] Execute the bring-up sequence in SPEC.md §12.1 — **strictly in order** — *the nine steps are encoded in `hardware.yaml` and their order is checked*
+- [x] Mandatory external hardware e-stop from bring-up step 8 onward — *`hardware.launch.py` refuses to start Nav2 without `estop_confirmed:=true`*
 
 **Acceptance**
-- Post-optimisation suite results are no worse than pre-optimisation.
+- Post-optimisation suite results are no worse than pre-optimisation. — *rule
+  implemented and tested; note it requires **~1470 missions per side** to detect
+  a 2-point regression at a 95% baseline (D20)*
 - On hardware: repeated collision-free low-speed runs before any speed increase.
+  — **open**, no vehicle
 
 ---
 
