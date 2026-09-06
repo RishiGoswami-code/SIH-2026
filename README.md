@@ -28,9 +28,26 @@ decision.
 ```
 .
 ├── drishti-ugv/     the project: requirements, spec, backlog, evaluation
+├── prototype/       runnable live demo — no ROS, no GPU, no install
 ├── deck/            SIH idea submission and the generator that builds it
 └── source/          upstream source material (blueprint, official template)
 ```
+
+### `prototype/` — see it work, now
+
+```bash
+cd prototype && python run_demo.py
+```
+
+A live view of the **real** terrain cost function and the **real** safety
+supervisor driving a vehicle around a ditch, and stopping when a camera
+freezes. Python 3.8+ and nothing else.
+
+The logic is not a re-creation: `tools/check_parity.py` proves the ported cores
+give identical answers to the shipping C++ across 8000 cases. What is *not*
+modelled is visual SLAM — the vehicle knows where it is — so this demonstrates
+terrain reasoning and the safety gate, not GPS-denied localisation. See
+[prototype/README.md](prototype/README.md).
 
 ### `drishti-ugv/` — the project
 
