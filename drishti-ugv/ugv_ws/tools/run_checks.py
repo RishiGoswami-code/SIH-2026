@@ -24,6 +24,8 @@ CHECKS = [
      "src/drishti_eval/test/test_metrics.py"),
     ("run report (drift target, alignment disclosure)",
      "src/drishti_eval/test/test_report.py"),
+    ("perception (taxonomy, health, obstacle distance)",
+     "src/drishti_perception/test/test_perception.py"),
 ]
 
 results = []

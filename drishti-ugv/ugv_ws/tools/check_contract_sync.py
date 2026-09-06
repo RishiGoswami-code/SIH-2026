@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cross-file consistency checks that no single compiler can catch.
 
-Three things drift silently in this workspace and each one is a real hazard:
+Five things drift silently in this workspace and each one is a real hazard:
 
   1. drishti_msgs/msg/SafetyState.msg constants vs the C++ Action/Reason enums.
      A mismatch means the supervisor publishes a reason code that means
@@ -12,6 +12,18 @@ Three things drift silently in this workspace and each one is a real hazard:
      silently runs a different safety envelope than one started with it.
 
   3. Every SPEC.md section 9.3 parameter is present in both.
+
+  4. Traversability weights and limits: traversability_core.hpp vs
+     traversability.yaml. Same failure as 2, for terrain cost.
+
+  5. Cross-package agreement on two rules that are stated in more than one
+     place:
+       - SPEC.md 6.2 ("unknown terrain is expensive, never free") is encoded
+         both as traversability unknown_cost and as the taxonomy UNKNOWN tier
+         cost. An unobserved cell and an unclassified pixel must cost the same.
+       - t_camera_stale and t_depth_stale are read by both the supervisor and
+         the perception node. If they disagree, one stops while the other
+         still reports healthy.
 
 Runs anywhere with Python 3; needs neither ROS nor a compiler.
 
@@ -30,6 +42,10 @@ TRAV_HPP = os.path.join(WS, "src", "drishti_traversability", "include",
                         "drishti_traversability", "traversability_core.hpp")
 TRAV_YAML = os.path.join(WS, "src", "drishti_bringup", "config",
                          "traversability.yaml")
+TAXONOMY = os.path.join(WS, "src", "drishti_perception", "drishti_perception",
+                        "taxonomy.py")
+PERCEPTION_YAML = os.path.join(WS, "src", "drishti_bringup", "config",
+                               "perception.yaml")
 
 # SPEC.md section 9.3
 SPEC_PARAMS = {
@@ -199,6 +215,46 @@ for struct, section in (("Weights", "weights"), ("Limits", "limits")):
     if extra:
         fail("traversability.yaml %s has keys the header does not: %s"
              % (section, sorted(extra)))
+
+print("5. SPEC 6.2 across packages, and staleness across nodes")
+
+# The cost of ignorance is stated in three places, and all three are the same
+# rule. If they drift, an unobserved terrain cell, an unclassified pixel and an
+# unrecognised class id get priced differently for no defensible reason.
+trav_unknown = trav_params.get("limits", {}).get("unknown_cost")
+tax_unknown = None
+m = re.search(r"Tier\.UNKNOWN:\s*TierPolicy\(cost=([\d.]+)", read(TAXONOMY))
+if m:
+    tax_unknown = float(m.group(1))
+else:
+    fail("could not find the UNKNOWN tier cost in taxonomy.py")
+
+if trav_unknown is not None and tax_unknown is not None:
+    if abs(float(trav_unknown) - tax_unknown) > 1e-12:
+        fail("SPEC 6.2 drift: traversability unknown_cost=%g but the taxonomy "
+             "UNKNOWN tier costs %g. Both encode 'unknown terrain is expensive, "
+             "never free'." % (trav_unknown, tax_unknown))
+    else:
+        ok("unknown cost agrees across packages: %g" % tax_unknown)
+
+# The supervisor and perception must agree about what "fresh" means, or one
+# stops while the other still reports healthy.
+try:
+    import yaml as _yaml
+    perc = _yaml.safe_load(read(PERCEPTION_YAML))["perception"]["ros__parameters"]
+except Exception as exc:                                    # noqa: BLE001
+    fail("could not parse perception.yaml: %s" % exc)
+    perc = {}
+
+for key in ("t_camera_stale", "t_depth_stale"):
+    sup_val, perc_val = yml.get(key), perc.get(key)
+    if sup_val is None or perc_val is None:
+        fail("%s missing from drishti.yaml or perception.yaml" % key)
+    elif abs(float(sup_val) - float(perc_val)) > 1e-12:
+        fail("%s: supervisor=%g, perception=%g -- the two disagree about "
+             "freshness" % (key, sup_val, perc_val))
+    else:
+        ok("%-16s agrees between supervisor and perception: %g" % (key, sup_val))
 
 print()
 if failures:

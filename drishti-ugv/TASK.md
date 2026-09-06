@@ -120,13 +120,16 @@ odometry and Nav2.
 
 **Artefact:** semantic hazard and terrain classification fused into the cost.
 
-- [ ] Stand up `drishti_perception` with a pretrained lightweight YOLO detector
-- [ ] Publish `/perception/detections` and `/perception/health`
-- [ ] Add segmentation for the terrain tiers in SPEC.md §5.2 — keep the vocabulary small
-- [ ] Publish `/perception/semantic_mask` with stable class ids
+> **Taxonomy, health and obstacle distance are done and tested (198 checks).
+> The model and every ROS wrapper are written but never run.**
+
+- [x] Stand up `drishti_perception` with a pretrained lightweight YOLO detector — *wrapper written; ultralytics **not installed**, and deliberately not declared as a package dependency until its AGPL position is settled*
+- [x] Publish `/perception/detections` and `/perception/health` — *node written; health goes out on a timer so silence stays a detectable failure*
+- [ ] Add segmentation for the terrain tiers in SPEC.md §5.2 — keep the vocabulary small — *vocabulary defined and frozen (19 classes); no segmenter yet*
+- [x] Publish `/perception/semantic_mask` with stable class ids — *ids frozen and pinned by a test; mask publication itself is V2*
 - [ ] Project semantics into the elevation map as semantic layers
-- [ ] Wire the `semantic` and `uncertainty` terms into the cost function
-- [ ] Measure perception latency against the ≤ 100 ms budget; apply TensorRT if needed
+- [x] Wire the `semantic` and `uncertainty` terms into the cost function — *taxonomy feeds `semantic_cost`/`semantic_lethal`; layer names already in `traversability.yaml`*
+- [ ] Measure perception latency against the ≤ 100 ms budget; apply TensorRT if needed — *latency is measured and published; the budget cannot be checked without hardware*
 - [ ] Generate synthetic training data **only if** failure analysis demands it (Isaac Sim is available offline for small scenes — D15)
 - [ ] Ablation: stereo depth vs Depth Anything V2 Small
 

@@ -49,6 +49,8 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 14 | **Phase 2 assets**: `drishti_eval` (ATE, RPE, drift, run report) — **64 checks, 0 failures**, no ROS dependency; RTAB-Map stereo config and `slam.launch.py`; Medium world | 6 Sep 2026 |
 | 15 | **Phase 3 assets**: `drishti_traversability` — SPEC.md §6.1 cost function, **1217 checks, 0 failures**, clean under `-Werror`; fusion node, Nav2 costmap layer, weight config, Hard world with a real ditch | 6 Sep 2026 |
 | 16 | `tools/check_sim_assets.py` — worlds parse, required gz systems present, every model has collision geometry; negative-tested | 6 Sep 2026 |
+| 17 | **Phase 4 assets**: `drishti_perception` — frozen 19-class SPEC.md §5.2 vocabulary, perception health, nearest-hazard distance. **198 checks, 0 failures**; detector wrapper and ROS node written, not run | 7 Sep 2026 |
+| 18 | `check_contract_sync.py` extended to cross-package rules: SPEC.md §6.2 unknown cost, and staleness agreement between supervisor and perception; both negative-tested | 7 Sep 2026 |
 
 ## In progress
 
@@ -64,10 +66,11 @@ behind them.
 | 1 Sim navigation | description, Easy world, bridge, Nav2 config, bringup | frame tree, command path | ✗ |
 | 2 Visual SLAM | `drishti_eval` metrics, RTAB-Map config, Medium world | **64 checks** on the metrics | ✗ |
 | 3 Traversability | cost function, fusion node, Nav2 layer, Hard world | **1217 checks** on the cost function | ✗ |
+| 4 Perception | taxonomy, health, obstacle distance, detector, node | **198 checks** on the pure logic | ✗ |
 | 5 Safety | supervisor core, ROS node | **377 checks** on the core | node ✗ |
 
-`python tools/run_checks.py` runs the six Python suites; the two C++ suites
-need a compiler and run separately. Currently **6/6, 377/377 and 1217/1217**.
+`python tools/run_checks.py` runs the seven Python suites; the two C++ suites
+need a compiler and run separately. Currently **7/7, 377/377 and 1217/1217**.
 
 The pattern that keeps working: put the judgement in a core with no ROS
 dependency, and the plumbing in a thin wrapper. The cores are the parts that
@@ -80,10 +83,10 @@ The one exception remains the supervisor decision core: 377 checks, clean under
 
 ## Next actions
 
-Continue building offline, in phase order: **Phase 4** (perception — the
-health publisher and the semantic-to-cost mapping are testable here; the model
-itself is not), then **Phase 6** (the mission harness and outcome
-classification, which is again pure logic).
+Continue building offline: **Phase 6** (the mission harness — outcome
+classification, scenario generation and the metrics roll-up are pure logic and
+therefore testable here). Phase 5 is largely done already (D14); Phase 7
+optimisation and the remaining Phase 4 items need a running stack.
 
 When a machine is available, in this order:
 

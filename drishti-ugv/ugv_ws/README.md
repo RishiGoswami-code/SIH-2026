@@ -59,6 +59,8 @@ unexecuted**.
 | `drishti_description` | `ament_cmake` | UGV xacro, stereo + depth + IMU | frame tree checked |
 | `drishti_sim` | `ament_cmake` | Gazebo worlds, `ros_gz` bridge | XML/YAML checked |
 | `drishti_eval` | `ament_python` | ATE, RPE, drift, run report | **64 checks, tested** |
+| `drishti_traversability` | `ament_cmake` | SPEC §6.1 cost, Nav2 layer | **1217 checks, tested** |
+| `drishti_perception` | `ament_python` | taxonomy, health, obstacle distance | **198 checks, tested** |
 
 Everything else in the system uses standard ROS 2 interfaces. Two custom
 messages exist because nothing standard carries them (SPEC.md §4).
@@ -134,7 +136,19 @@ ugv_ws/
     ├── drishti_sim/             worlds/{easy,medium}.sdf, config/bridge.yaml
     ├── drishti_bringup/         drishti.yaml, nav2.yaml, rtabmap.yaml, launch/
     ├── drishti_safety/          supervisor core + node + tests
+    ├── drishti_traversability/  cost core + fusion node + Nav2 layer
+    ├── drishti_perception/      taxonomy, health, obstacle, detector, node
     └── drishti_eval/            trajectory, metrics, report, bag_reader
 ```
+
+## The pattern
+
+Every package splits the same way: **judgement in a core with no ROS
+dependency, plumbing in a thin wrapper.** The cores are the parts that would be
+dangerous to get wrong, and they are the parts that are actually tested —
+1217 + 377 + 198 + 64 checks, none of which need ROS, a GPU or a simulator.
+
+The wrappers are uncompiled and unrun. That is the honest state, and every one
+of them says so in its own header rather than reading as working code.
 
 `build/`, `install/` and `log/` are ignored.
