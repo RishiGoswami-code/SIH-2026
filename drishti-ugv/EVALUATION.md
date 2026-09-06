@@ -161,18 +161,25 @@ be a failure of the safety design.
 
 ### 7.1 Ground truth
 
-Isaac Sim provides exact vehicle pose and object geometry. Ground truth is
+The simulator provides exact vehicle pose and object geometry. Ground truth is
 recorded **alongside** every rosbag2 run so localisation error, obstacle
 distance and path deviation are computed objectively rather than estimated.
 
 A run without its ground-truth track is not evaluable and does not count.
+`drishti_eval.bag_reader.load_run` enforces that in code: it raises rather than
+returning a half-populated result.
+
+Ground truth reaches the bag on `/ground_truth/pose` and is **never**
+subscribed at run time. `tools/check_wiring.py` fails the build if any launch
+file references it outside a comment. A pose that leaks into the runtime graph
+would make every localisation number in this project meaningless.
 
 ### 7.2 What every run records
 
 - Full rosbag2: sensors, TF, pose, costmaps, plan, `/cmd_vel`, `/safety/state`
 - Ground-truth pose track and object poses
 - Scenario id, random seed, and the complete parameter set in effect
-- Software versions (ROS 2, Isaac Sim, CUDA, driver, commit hash)
+- Software versions (ROS 2, Gazebo, CUDA, driver, commit hash)
 
 Without the seed and the parameter set, a result is an anecdote.
 

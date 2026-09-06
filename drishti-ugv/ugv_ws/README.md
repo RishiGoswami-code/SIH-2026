@@ -10,10 +10,11 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-> **`colcon build` is unverified.** No machine on the project has ROS 2
-> installed yet — STATUS.md blocker **B3**. Treat the first successful build as
-> the real Phase 0 acceptance event and record the exact toolchain versions in
-> STATUS.md when it happens.
+> **`colcon build` is unverified.** Nothing here has been compiled by a ROS
+> toolchain or executed — the team is building the stack ahead of the install
+> (STATUS.md **D17**). Treat the first successful build as the real Phase 0
+> acceptance event and record the exact toolchain versions in STATUS.md when it
+> happens. Expect a batch of API-level fixes concentrated in the ROS wrappers.
 
 ### What *is* verified
 
@@ -31,12 +32,19 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic -Iinclude \
 The same file is registered as a CTest target, so `colcon test` runs it too.
 
 ```bash
-python tools/check_contract_sync.py
+python tools/run_checks.py
 ```
 
-catches the drift a compiler cannot see: `SafetyState.msg` constants against the
-C++ `Action`/`Reason` enums, and the `Params` defaults in the header against
-`drishti.yaml`. Run it after touching any of those three files.
+runs every offline suite: the contract-sync check (`SafetyState.msg` constants
+against the C++ enums, header defaults against `drishti.yaml`), the robot
+description against the SPEC.md §3 frame tree, the `/cmd_vel` ownership
+invariant, and the `drishti_eval` metric tests. **Currently 5/5.**
+
+The localisation metrics are worth calling out: ATE, RPE and drift are pure
+numpy with no ROS dependency, and every test case has an answer derivable by
+hand — a known rigid transform Umeyama must recover exactly, a sinusoidal error
+whose RMS is A/√2, a scale error that rigid alignment must *not* hide. A subtly
+wrong ATE would let us report a drift figure we had not earned.
 
 Everything else — the ROS node, the launch file — is **uncompiled and
 unexecuted**.
@@ -48,6 +56,9 @@ unexecuted**.
 | `drishti_msgs` | `ament_cmake` + rosidl | `SafetyState`, `PerceptionHealth` | syntax-checked |
 | `drishti_bringup` | `ament_cmake` | shared params, `safety.launch.py` | syntax-checked |
 | `drishti_safety` | `ament_cmake` | supervisor core + ROS node | **core tested**, node uncompiled |
+| `drishti_description` | `ament_cmake` | UGV xacro, stereo + depth + IMU | frame tree checked |
+| `drishti_sim` | `ament_cmake` | Gazebo worlds, `ros_gz` bridge | XML/YAML checked |
+| `drishti_eval` | `ament_python` | ATE, RPE, drift, run report | **64 checks, tested** |
 
 Everything else in the system uses standard ROS 2 interfaces. Two custom
 messages exist because nothing standard carries them (SPEC.md §4).
@@ -61,8 +72,10 @@ fields are populated even when the action is `ACTION_PASS`, so a recorded run
 can be replayed and the decision boundary inspected without re-running
 perception.
 
-Reason codes are numbered in the SPEC.md §9.1 evaluation order, so a higher
-code means "checked later, and everything before it passed".
+Reason codes follow the SPEC.md §9.1 *listing* order, which is **not** the
+evaluation order: every STOP condition is checked before the single SLOW
+branch, so `LOW_CONFIDENCE` (5) is evaluated after `PATH_INVALID` (6) and
+`COMMAND_INVALID` (7). Do not infer precedence from the numbers.
 
 **`PerceptionHealth`** — published on `/perception/health`. Liveness and
 quality only. The supervisor consumes this to decide whether perception can be
@@ -110,17 +123,18 @@ command anyway.
 
 ```
 ugv_ws/
-├── tools/check_contract_sync.py     cross-file consistency checks
+├── tools/                       offline checks, no ROS needed
+│   ├── run_checks.py                runs all of the below
+│   ├── check_contract_sync.py       .msg constants vs C++ enums vs YAML
+│   ├── check_robot_description.py   SPEC 3 frame tree
+│   └── check_wiring.py              SPEC 9.4.1 /cmd_vel ownership
 └── src/
-    ├── drishti_msgs/
-    │   └── msg/{SafetyState,PerceptionHealth}.msg
-    ├── drishti_bringup/
-    │   ├── config/drishti.yaml
-    │   └── launch/safety.launch.py
-    └── drishti_safety/
-        ├── include/drishti_safety/supervisor_core.hpp
-        ├── src/{supervisor_core,safety_supervisor_node}.cpp
-        └── test/test_supervisor_core.cpp
+    ├── drishti_msgs/            SafetyState, PerceptionHealth
+    ├── drishti_description/     drishti.urdf.xacro
+    ├── drishti_sim/             worlds/{easy,medium}.sdf, config/bridge.yaml
+    ├── drishti_bringup/         drishti.yaml, nav2.yaml, rtabmap.yaml, launch/
+    ├── drishti_safety/          supervisor core + node + tests
+    └── drishti_eval/            trajectory, metrics, report, bag_reader
 ```
 
 `build/`, `install/` and `log/` are ignored.

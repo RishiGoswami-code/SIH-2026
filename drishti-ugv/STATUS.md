@@ -46,6 +46,7 @@ Update it whenever a phase moves, a decision is made, or a suite is run.
 | 11 | **SPEC.md §9.1 ordering defect found and corrected** (D13), plus §4.2 topic and three §9.3 parameters added | 5 Sep 2026 |
 | 12 | **Phase 1 assets written**: `drishti_description` (skid-steer UGV, stereo + depth + IMU), `drishti_sim` (Gazebo Harmonic Easy world, ros_gz bridge), `nav2.yaml` and bringup launch | 6 Sep 2026 |
 | 13 | `tools/check_robot_description.py` and `tools/check_wiring.py` — frame tree and `/cmd_vel` ownership enforced offline; both negative-tested | 6 Sep 2026 |
+| 14 | **Phase 2 assets**: `drishti_eval` (ATE, RPE, drift, run report) — **64 checks, 0 failures**, no ROS dependency; RTAB-Map stereo config and `slam.launch.py`; Medium world | 6 Sep 2026 |
 
 ## In progress
 
@@ -55,11 +56,15 @@ instance. So phases advance by *assets written and statically checked*, and the
 phase-gate acceptance criteria — which all require a running system — stay open
 behind them.
 
-| Phase | Assets | Run |
-|---|---|---|
-| 0 Environment | workspace, msgs, shared params | ✗ |
-| 1 Sim navigation | description, Gazebo Easy world, bridge, Nav2 config, bringup | ✗ |
-| 5 Safety | supervisor core **tested**, ROS node written | core ✓, node ✗ |
+| Phase | Assets | Verified offline | Run |
+|---|---|---|---|
+| 0 Environment | workspace, msgs, shared params | contract sync | ✗ |
+| 1 Sim navigation | description, Easy world, bridge, Nav2 config, bringup | frame tree, command path | ✗ |
+| 2 Visual SLAM | `drishti_eval` metrics, RTAB-Map config, Medium world | **64 checks** on the metrics | ✗ |
+| 5 Safety | supervisor core, ROS node | **377 checks** on the core | node ✗ |
+
+`python tools/run_checks.py` runs all five Python suites; the C++ supervisor
+tests need a compiler and run separately. Currently 5/5 and 377/377.
 
 Nothing in this repository has been compiled by a ROS toolchain or executed.
 The one exception remains the supervisor decision core: 377 checks, clean under
@@ -67,10 +72,10 @@ The one exception remains the supervisor decision core: 377 checks, clean under
 
 ## Next actions
 
-Continue building offline, in phase order: **Phase 2** (RTAB-Map configuration
-and the `drishti_eval` ATE/RPE implementation, which is pure maths and
-therefore testable here), then **Phase 3** (traversability fusion — the cost
-function in SPEC.md §6.1 is likewise pure and testable).
+Continue building offline, in phase order: **Phase 3** (terrain and
+traversability — the SPEC.md §6.1 cost function is pure and therefore testable
+here, as the metrics were), then **Phase 4** (perception) and **Phase 6** (the
+mission harness).
 
 When a machine is available, in this order:
 

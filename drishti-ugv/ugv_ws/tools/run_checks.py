@@ -12,10 +12,17 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+WS = os.path.dirname(HERE)
+
+# (title, path relative to the workspace root)
 CHECKS = [
-    ("contract sync (msg constants, param defaults)", "check_contract_sync.py"),
-    ("robot description (SPEC 3 frame tree)", "check_robot_description.py"),
-    ("command path (SPEC 9.4.1 /cmd_vel ownership)", "check_wiring.py"),
+    ("contract sync (msg constants, param defaults)", "tools/check_contract_sync.py"),
+    ("robot description (SPEC 3 frame tree)", "tools/check_robot_description.py"),
+    ("command path (SPEC 9.4.1 /cmd_vel ownership)", "tools/check_wiring.py"),
+    ("localisation metrics (ATE, RPE, alignment)",
+     "src/drishti_eval/test/test_metrics.py"),
+    ("run report (drift target, alignment disclosure)",
+     "src/drishti_eval/test/test_report.py"),
 ]
 
 results = []
@@ -23,7 +30,7 @@ for title, script in CHECKS:
     print("=" * 72)
     print(title)
     print("=" * 72)
-    code = subprocess.call([sys.executable, os.path.join(HERE, script)])
+    code = subprocess.call([sys.executable, os.path.join(WS, script)])
     results.append((title, code))
     print()
 

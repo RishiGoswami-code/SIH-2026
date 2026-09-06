@@ -67,14 +67,18 @@ odometry and Nav2.
 
 **Artefact:** GPS-free pose and a map, with drift quantified against ground truth.
 
+> **Metrics done and tested; SLAM configured but never run.** The ATE/RPE
+> implementation is pure maths with no ROS dependency, so it is genuinely
+> verified (64 checks). Everything requiring RTAB-Map to actually run is open.
+
 - [ ] Calibrate the simulated stereo pair; verify `camera_info` matches
-- [ ] Install `rtabmap_ros`; configure for stereo + IMU
-- [ ] Establish `map → odom` from RTAB-Map only; remove any ground-truth pose from the graph
+- [x] Install `rtabmap_ros`; configure for stereo + IMU — *`config/rtabmap.yaml` + `slam.launch.py` authored, **not installed or run***
+- [x] Establish `map → odom` from RTAB-Map only; remove any ground-truth pose from the graph — *`publish_tf` set on rtabmap alone; ground-truth exclusion enforced by `tools/check_wiring.py`*
 - [ ] Verify loop closure on a revisited route
-- [ ] Log ground-truth pose from the simulator alongside every bag
-- [ ] Implement ATE/RPE computation in `drishti_eval`
+- [x] Log ground-truth pose from the simulator alongside every bag — *bridged GZ_TO_ROS, read-only*
+- [x] Implement ATE/RPE computation in `drishti_eval` — *Umeyama alignment, ATE, RPE, drift %; 64 checks, 0 failures*
 - [ ] Feed RTAB-Map pose into Nav2 and re-run the Phase 1 goal test
-- [ ] Record baseline drift on Easy and Medium worlds
+- [ ] Record baseline drift on Easy and Medium worlds — *both worlds authored*
 
 **Acceptance**
 - Nav2 reaches goals using RTAB-Map pose with no GNSS anywhere in the graph.
