@@ -46,7 +46,7 @@ The tkinter demo replays fixed scenarios. The lab lets you build the terrain
 yourself and watch the system react — no install, one file, opens anywhere.
 
 ```bash
-python tools/build_page.py --out web/drishti_lab.html
+python tools/build_page.py --target lab
 ```
 
 Draw with the palette on the left — stone, boulder, ditch, slope, steep bank,
@@ -181,7 +181,7 @@ prototype/
     ├── parity_oracle.cpp        emits the C++ answers
     ├── check_parity.py          proves the ports match  (8000 cases)
     ├── parity_fixture.cpp       520 C++ decisions the browser checks itself on
-    ├── build_page.py            builds the lab page
+    ├── build_page.py            builds the lab and console pages
     ├── export_runs.py           records scenario replays as JSON
     └── test_demo.py             pins what the demo claims  (43 checks)
 

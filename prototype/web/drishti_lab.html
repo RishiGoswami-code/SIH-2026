@@ -37,7 +37,7 @@
     margin:0; padding:0 0 1.5rem; line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap { max-width:1560px; margin:0 auto; padding:0 1rem; }
+  .wrap { margin:0 auto; padding:0 .8rem; }
 
   /* ------------------------------------------------------------ header */
   .bar {
@@ -56,9 +56,23 @@
   .parity.bad { color:var(--stop); border-color:currentColor; }
 
   /* ------------------------------------------------------------ layout */
-  .lab { display:grid; grid-template-columns:158px minmax(0,1fr) 274px; gap:.85rem; align-items:start; }
-  @media (max-width:1220px){ .lab{grid-template-columns:150px minmax(0,1fr);} .side{grid-column:1/-1;} }
+  .lab { display:grid; grid-template-columns:142px minmax(0,1fr) 244px; gap:.7rem; align-items:start; }
+  @media (max-width:1220px){ .lab{grid-template-columns:142px minmax(0,1fr);} .side{grid-column:1/-1;} }
   @media (max-width:780px){ .lab{grid-template-columns:1fr;} .tools{display:grid;grid-template-columns:repeat(3,1fr);} }
+
+  /* On a desktop the maps ARE the page: pin the shell to the viewport and give
+     the canvases every pixel the two panels do not need. Below that width the
+     grid stacks and the page scrolls normally, so nothing is trapped offscreen. */
+  @media (min-width:1221px){
+    html, body { height:100%; }
+    body { overflow:hidden; padding-bottom:0; }
+    .lab { height:calc(100vh - 3.4rem); align-items:stretch; }
+    .palette, .side { overflow-y:auto; min-height:0; }
+    .stage { display:flex; flex-direction:column; min-height:0; }
+    .maps { flex:1; min-height:0; }
+    figure { display:flex; flex-direction:column; min-height:0; }
+    canvas { flex:1; min-height:0; height:auto; object-fit:contain; }
+  }
 
   .group { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:.6rem; }
   .cap {
@@ -77,7 +91,15 @@
   .tool:hover { background:var(--panel-2); color:var(--ink); }
   .tool[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent); color:var(--ink); }
   .tool:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-  .chip { width:13px; height:13px; border-radius:2px; flex:0 0 auto; border:1px solid rgba(128,128,128,.4); }
+  /* The palette shows the same glyph the map draws, so nobody has to hold a
+     colour in their head to know what they are looking at. */
+  .chip {
+    width:18px; height:18px; flex:0 0 auto; border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; line-height:1; background:var(--panel-2);
+    border:1px solid var(--line); overflow:hidden;
+  }
+  .chip.plain { font-size:0; border-color:rgba(128,128,128,.4); }
   .tool kbd {
     margin-left:auto; font-family:var(--f-mono); font-size:.62rem; color:var(--muted);
     border:1px solid var(--line); border-radius:2px; padding:0 .22rem;
@@ -88,6 +110,8 @@
 
   /* ------------------------------------------------------------- stage */
   .maps { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+  .maps.solo { grid-template-columns:1fr; }
+  figure[hidden] { display:none; }
   @media (max-width:900px){ .maps{grid-template-columns:1fr;} }
   figure { margin:0; }
   figcaption {
@@ -120,6 +144,11 @@
   button.ctl.ghost { background:transparent; border-color:var(--line); color:var(--ink-2); }
   button.ctl.ghost:hover { border-color:var(--accent); color:var(--accent); background:transparent; }
   button.ctl.armed { background:var(--stop); border-color:var(--stop); color:#fff; }
+  .seg { display:flex; }
+  .seg .ctl { border-radius:0; margin-left:-1px; padding:.34rem .58rem; }
+  .seg .ctl:first-child { border-radius:3px 0 0 3px; margin-left:0; }
+  .seg .ctl:last-child { border-radius:0 3px 3px 0; }
+  .seg .ctl[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--panel); }
   select.speed {
     font-family:var(--f-mono); font-size:.72rem; background:var(--panel-2);
     color:var(--ink-2); border:1px solid var(--line); border-radius:3px; padding:.26rem .35rem;
@@ -163,7 +192,7 @@
 
   <div class="lab">
     <!-- ------------------------------------------------ tool palette -->
-    <div style="display:flex;flex-direction:column;gap:.7rem;">
+    <div class="palette" style="display:flex;flex-direction:column;gap:.7rem;">
       <div class="group">
         <p class="cap">Place</p>
         <div class="tools" id="tools"></div>
@@ -177,25 +206,25 @@
         <p class="cap">Inject fault</p>
         <div class="tools">
           <button class="tool" type="button" id="f-freeze" aria-pressed="false">
-            <span class="chip" style="background:#8b5cf6"></span>Camera freeze</button>
+            <span class="chip">&#10052;</span>Camera freeze</button>
           <button class="tool" type="button" id="f-cam" aria-pressed="false">
-            <span class="chip" style="background:#6b7280"></span>Camera dropout</button>
+            <span class="chip">&#128247;</span>Camera dropout</button>
           <button class="tool" type="button" id="f-depth" aria-pressed="false">
-            <span class="chip" style="background:#0ea5e9"></span>Depth dropout</button>
+            <span class="chip">&#128225;</span>Depth dropout</button>
           <button class="tool" type="button" id="f-slam" aria-pressed="false">
-            <span class="chip" style="background:#f43f5e"></span>SLAM loss</button>
+            <span class="chip">&#129517;</span>SLAM loss</button>
         </div>
       </div>
     </div>
 
     <!-- -------------------------------------------------------- maps -->
-    <div style="min-width:0;">
+    <div class="stage" style="min-width:0;">
       <div class="maps">
-        <figure>
+        <figure id="fig-truth">
           <figcaption><span>Terrain — <b>click and drag to build</b></span><span id="hover">—</span></figcaption>
           <canvas id="edit" width="800" height="480"></canvas>
         </figure>
-        <figure>
+        <figure id="fig-belief">
           <figcaption><span>What the vehicle believes</span><span id="cover">0.0 %</span></figcaption>
           <canvas id="belief" width="800" height="480"></canvas>
         </figure>
@@ -218,14 +247,19 @@
           <option value="2">0.5×</option><option value="1" selected>1×</option>
           <option value="0.5">2×</option><option value="0.25">4×</option>
         </select>
+        <span class="seg" role="group" aria-label="Which map to show">
+          <button class="ctl ghost" type="button" data-view="both"   aria-pressed="true">Both</button>
+          <button class="ctl ghost" type="button" data-view="truth"  aria-pressed="false">Terrain</button>
+          <button class="ctl ghost" type="button" data-view="belief" aria-pressed="false">Belief</button>
+        </span>
         <span class="clock" id="clock">t = 0.0 s</span>
       </div>
 
       <div class="legend">
         <span><span class="ramp"></span> cheap → costly</span>
-        <span><span class="chip" style="background:#d1435f"></span> lethal</span>
-        <span><span class="chip" style="background:var(--unseen)"></span> unobserved (0.85)</span>
-        <span><span class="chip" style="background:var(--accent)"></span> planned route</span>
+        <span><span class="chip plain" style="background:#d1435f"></span> lethal</span>
+        <span><span class="chip plain" style="background:var(--unseen)"></span> unobserved (0.85)</span>
+        <span><span class="chip plain" style="background:var(--accent)"></span> planned route</span>
       </div>
     </div>
 
@@ -394,10 +428,10 @@ SEM_LETHAL[C_ROCK]=1; SEM_LETHAL[C_TREE]=1; SEM_LETHAL[C_WALL]=1;
 
 var TERRAIN_COLOUR = {};
 TERRAIN_COLOUR[C_DIRT]="#8a7256"; TERRAIN_COLOUR[C_GRASS]="#4a6b40";
-TERRAIN_COLOUR[C_GRAVEL]="#8d8a7e"; TERRAIN_COLOUR[C_MUD]="#6b4f2a";
+TERRAIN_COLOUR[C_GRAVEL]="#8d8a7e"; TERRAIN_COLOUR[C_MUD]="#5c4630";
 TERRAIN_COLOUR[C_WATER]="#2a5f8b"; TERRAIN_COLOUR[C_DITCH]="#14100c";
-TERRAIN_COLOUR[C_ROCK]="#6b7078"; TERRAIN_COLOUR[C_TREE]="#3b2c19";
-TERRAIN_COLOUR[C_WALL]="#5a5f66";
+TERRAIN_COLOUR[C_ROCK]="#6b7078"; TERRAIN_COLOUR[C_TREE]="#24422a";
+TERRAIN_COLOUR[C_WALL]="#9a6a55";
 
 function idx(cx,cy){ return cy*W+cx; }
 function inb(cx,cy){ return cx>=0 && cx<W && cy>=0 && cy<H; }
@@ -427,19 +461,19 @@ function varianceAt(cx,cy){
    TOOLS
    =================================================================== */
 var TOOLS = [
-  {id:"stone",  name:"Stone",      key:"1", colour:"#6b7078", hint:"lethal step"},
-  {id:"boulder",name:"Boulder",    key:"2", colour:"#4e535a", hint:"tall, occludes"},
-  {id:"ditch",  name:"Ditch",      key:"3", colour:"#14100c", hint:"negative obstacle"},
-  {id:"slope",  name:"Slope up",   key:"4", colour:"#a6843f", hint:"costly, passable"},
-  {id:"steep",  name:"Steep bank", key:"5", colour:"#7d5a1f", hint:"over 30° = lethal"},
-  {id:"gravel", name:"Rough",      key:"6", colour:"#8d8a7e", hint:"roughness"},
-  {id:"mud",    name:"Mud",        key:"7", colour:"#6b4f2a", hint:"high semantic cost"},
-  {id:"water",  name:"Water",      key:"8", colour:"#2a5f8b", hint:"flat but lethal"},
-  {id:"tree",   name:"Tree",       key:"9", colour:"#3b2c19", hint:"lethal trunk"},
-  {id:"wall",   name:"Wall",       key:"0", colour:"#5a5f66", hint:"drag to make turns"},
-  {id:"flat",   name:"Flatten",    key:"e", colour:"#8a7256", hint:"erase"},
-  {id:"start",  name:"Move start", key:"s", colour:"#4ade80", hint:""},
-  {id:"goal",   name:"Move goal",  key:"g", colour:"#35b8c9", hint:""}
+  {id:"stone",  name:"Stone",      key:"1", colour:"#6b7078", icon:"\uD83E\uDEA8",  hint:"lethal step"},
+  {id:"boulder",name:"Boulder",    key:"2", colour:"#4e535a", icon:"\uD83D\uDDFF",  hint:"tall, occludes"},
+  {id:"ditch",  name:"Ditch",      key:"3", colour:"#14100c", icon:"\uD83D\uDD73",  hint:"negative obstacle"},
+  {id:"slope",  name:"Slope up",   key:"4", colour:"#e0b53a", icon:"\u25B2",   hint:"costly, passable"},
+  {id:"steep",  name:"Steep bank", key:"5", colour:"#e8635f", icon:"\u25B2",   hint:"over 30° = lethal"},
+  {id:"gravel", name:"Rough",      key:"6", colour:"#8d8a7e", icon:"\u2234",  hint:"roughness"},
+  {id:"mud",    name:"Mud",        key:"7", colour:"#5c4630", icon:"\uD83D\uDFE4", hint:"high semantic cost"},
+  {id:"water",  name:"Water",      key:"8", colour:"#2a5f8b", icon:"\uD83D\uDCA7",  hint:"flat but lethal"},
+  {id:"tree",   name:"Tree",       key:"9", colour:"#24422a", icon:"\uD83C\uDF32",  hint:"lethal trunk"},
+  {id:"wall",   name:"Wall",       key:"0", colour:"#9a6a55", icon:"\uD83E\uDDF1", hint:"drag to make turns"},
+  {id:"flat",   name:"Flatten",    key:"e", colour:"#8a7256", icon:"\u232B", hint:"erase"},
+  {id:"start",  name:"Move start", key:"s", colour:"#4ade80", icon:"\u25B6",  hint:""},
+  {id:"goal",   name:"Move goal",  key:"g", colour:"#35b8c9", icon:"\uD83C\uDFAF",   hint:""}
 ];
 var tool = "stone", brush = 3;
 
@@ -471,6 +505,7 @@ function stamp(cx, cy){
       case "flat":    heights[i]=0; classes[i]=C_DIRT; break;
     }
   }
+  markTerrain();
   return null;
 }
 
@@ -499,7 +534,7 @@ function resetRun(keepTerrain){
   sim.lastRgb = 0; sim.lastDepth = 0; sim.staticFor = 0;
   sim.path = []; sim.trail = []; sim.lastReplan = -99; sim.dirty = true;
   sim.outcome = null; sim.decision = null; sim.nearest = NaN; sim.stopSince = null;
-  if(!keepTerrain){ heights.fill(0); classes.fill(C_DIRT); }
+  if(!keepTerrain){ heights.fill(0); classes.fill(C_DIRT); markTerrain(); }
   log("sys", "run reset");
 }
 
@@ -729,8 +764,27 @@ function log(kind, msg){
    =================================================================== */
 var ec = document.getElementById("edit"), bc = document.getElementById("belief");
 var ex = ec.getContext("2d"), bx = bc.getContext("2d");
-var S = 8;
+var S = 12;
 ec.width = bc.width = W*S; ec.height = bc.height = H*S;
+
+/* Terrain changes only when someone edits it, so it renders once into an
+   offscreen canvas and is blitted per frame. Without this the glyph pass below
+   would run thousands of fillText calls every tick. */
+var tcan = document.createElement("canvas");
+tcan.width = ec.width; tcan.height = ec.height;
+var tx = tcan.getContext("2d");
+var terrainDirty = true;
+function markTerrain(){ terrainDirty = true; }
+
+var EMOJI_FONT = "'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',system-ui,sans-serif";
+var GLYPH = {};
+GLYPH[C_TREE]   = "\uD83C\uDF32";
+GLYPH[C_WALL]   = "\uD83E\uDDF1";
+GLYPH[C_WATER]  = "\uD83D\uDCA7";
+GLYPH[C_DITCH]  = "\uD83D\uDD73";
+GLYPH[C_MUD]    = "\uD83D\uDFE4";
+GLYPH[C_GRAVEL] = "\u2234";
+var GK = 3;   // one mark every GK cells, so a feature is tiled and not dotted
 
 var RAMP = [[0,[29,127,140]],[0.25,[47,158,107]],[0.5,[141,184,60]],
             [0.7,[224,181,58]],[0.85,[224,122,48]],[1,[209,67,95]]];
@@ -748,16 +802,57 @@ function ramp(v){
 }
 function cvar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 
-function drawEdit(){
-  ex.fillStyle = cvar("--map-bg"); ex.fillRect(0,0,ec.width,ec.height);
+function redrawTerrain(){
+  tx.fillStyle = cvar("--map-bg"); tx.fillRect(0,0,tcan.width,tcan.height);
   for(var cy=0;cy<H;cy++) for(var cx=0;cx<W;cx++){
     var i=idx(cx,cy), cls=classes[i], h=heights[i], col;
     if(cls === C_DIRT || cls === C_GRASS){
       var sh = Math.max(0, Math.min(255, Math.round(120 + h*95)));
       col = "rgb("+sh+","+Math.round(sh*0.85)+","+Math.round(sh*0.62)+")";
     } else col = TERRAIN_COLOUR[cls] || "#8a7256";
-    ex.fillStyle = col; ex.fillRect(cx*S, cy*S, S, S);
+    tx.fillStyle = col; tx.fillRect(cx*S, cy*S, S, S);
   }
+
+  /* Stone, boulder and wall are three greys; mud, tree and a dirt slope are
+     three browns. Colour cannot separate them, so every class carries a mark.
+     Rock splits on height because stone and boulder are the SAME class and
+     differ only in how tall they stand. */
+  tx.textAlign = "center"; tx.textBaseline = "middle";
+  tx.font = Math.round(S*1.75) + "px " + EMOJI_FONT;
+  for(var gy=1;gy<H;gy+=GK) for(var gx=1;gx<W;gx+=GK){
+    var j=idx(gx,gy), cls2=classes[j], g;
+    if(cls2 === C_ROCK) g = heights[j] >= 0.8 ? "\uD83D\uDDFF" : "\uD83E\uDEA8";
+    else g = GLYPH[cls2];
+    if(!g) continue;
+    tx.fillText(g, (gx+0.5)*S, (gy+0.5)*S);
+  }
+
+  /* Slope is a field, not an object, so it gets an arrow pointing uphill
+     rather than an icon -- amber where it is merely expensive, red past
+     slope_lethal where the cost function refuses it outright. */
+  for(var sy=1;sy<H;sy+=GK) for(var sx=1;sx<W;sx+=GK){
+    var k=idx(sx,sy);
+    if(classes[k] !== C_DIRT && classes[k] !== C_GRASS) continue;
+    var s = slopeAt(sx,sy);
+    if(s < TL.slope_max*0.5) continue;
+    var dx = hAt(sx+1,sy)-hAt(sx-1,sy), dy = hAt(sx,sy+1)-hAt(sx,sy-1);
+    if(dx === 0 && dy === 0) continue;
+    var r = S*0.8;
+    tx.save();
+    tx.translate((sx+0.5)*S, (sy+0.5)*S);
+    tx.rotate(Math.atan2(dy, dx));          // grid y grows downward, as screen y does
+    tx.fillStyle = s >= TL.slope_lethal ? "rgba(240,92,92,.95)" : "rgba(232,186,64,.92)";
+    tx.strokeStyle = "rgba(0,0,0,.5)"; tx.lineWidth = 1;
+    tx.beginPath();
+    tx.moveTo(r,0); tx.lineTo(-r*0.68, r*0.6); tx.lineTo(-r*0.68,-r*0.6);
+    tx.closePath(); tx.fill(); tx.stroke();
+    tx.restore();
+  }
+}
+
+function drawEdit(){
+  if(terrainDirty){ redrawTerrain(); terrainDirty = false; }
+  ex.drawImage(tcan, 0, 0);
   overlay(ex, false);
 }
 
@@ -768,6 +863,18 @@ function drawBelief(){
     var i=idx(cx,cy);
     bx.fillStyle = sim.observed[i] ? (sim.lethal[i] ? "#d1435f" : ramp(sim.cost[i])) : unseen;
     bx.fillRect(cx*S, cy*S, S, S);
+  }
+  /* Lethal is a refusal, not merely the top of the cost ramp, so it is marked
+     rather than left to be read off a colour near the red end. */
+  bx.strokeStyle = "rgba(24,6,10,.8)"; bx.lineWidth = Math.max(1, S*0.13);
+  for(var ly=1;ly<H;ly+=2) for(var lx=1;lx<W;lx+=2){
+    var j=idx(lx,ly);
+    if(!sim.observed[j] || !sim.lethal[j]) continue;
+    var x0=lx*S, y0=ly*S, m=S*0.27;
+    bx.beginPath();
+    bx.moveTo(x0+m,y0+m);   bx.lineTo(x0+S-m,y0+S-m);
+    bx.moveTo(x0+S-m,y0+m); bx.lineTo(x0+m,  y0+S-m);
+    bx.stroke();
   }
   overlay(bx, true);
 }
@@ -855,6 +962,7 @@ function disc(x,y,r,h,cls){
     if(!inb(cx,cy)) continue;
     if(Math.hypot(dx,dy)*RES <= r){ var i=idx(cx,cy); if(h!==null) heights[i]=h; if(cls!==null) classes[i]=cls; }
   }
+  markTerrain();
 }
 function ramp2(x0,x1,peak){
   for(var cy=0;cy<H;cy++) for(var cx=Math.floor(x0/RES);cx<=Math.floor(x1/RES);cx++){
@@ -862,6 +970,7 @@ function ramp2(x0,x1,peak){
     var f = (cx*RES - x0)/(x1-x0);
     heights[idx(cx,cy)] = peak*Math.sin(f*Math.PI);
   }
+  markTerrain();
 }
 
 var COURSES = {
@@ -896,7 +1005,10 @@ function buildTools(){
     b.dataset.tool = t.id;
     b.title = t.hint;
     b.innerHTML = '<span class="chip"></span><span class="nm"></span><kbd></kbd>';
-    b.querySelector(".chip").style.background = t.colour;
+    var chip = b.querySelector(".chip");
+    chip.textContent = t.icon;
+    chip.style.color = t.colour;
+    chip.style.background = t.colour + "2e";
     b.querySelector(".nm").textContent = t.name;
     b.querySelector("kbd").textContent = t.key;
     b.addEventListener("click", function(){ pick(t.id); });
@@ -968,7 +1080,7 @@ document.getElementById("preset").addEventListener("change", function(){
   var k = this.value; if(!k) return;
   sim.running = false; document.getElementById("play").textContent = "Run";
   lastKey = null;
-  heights.fill(0); classes.fill(C_DIRT);
+  heights.fill(0); classes.fill(C_DIRT); markTerrain();
   sim.start = [1.2,7.5]; sim.goal = [23.0,7.5];
   COURSES[k]();
   resetRun(true);
@@ -977,6 +1089,30 @@ document.getElementById("preset").addEventListener("change", function(){
   draw();
 });
 document.getElementById("speed").addEventListener("change", function(){ speed = parseFloat(this.value); });
+
+/* Either map can take the full width. Both are useful, but the gap between
+   them is only worth the split screen while you are watching for it. */
+document.querySelectorAll(".seg .ctl[data-view]").forEach(function(b){
+  b.addEventListener("click", function(){
+    var v = this.dataset.view;
+    document.querySelectorAll(".seg .ctl[data-view]").forEach(function(o){
+      o.setAttribute("aria-pressed", o.dataset.view === v ? "true" : "false");
+    });
+    document.querySelector(".maps").classList.toggle("solo", v !== "both");
+    document.getElementById("fig-truth").hidden  = (v === "belief");
+    document.getElementById("fig-belief").hidden = (v === "truth");
+    draw();
+  });
+});
+
+/* The cached terrain bakes in --map-bg, so a theme switch has to invalidate it
+   or the map keeps the old ground under the new palette. */
+if(window.matchMedia){
+  var mq = window.matchMedia("(prefers-color-scheme: dark)");
+  var onTheme = function(){ markTerrain(); draw(); };
+  if(mq.addEventListener) mq.addEventListener("change", onTheme);
+  else if(mq.addListener) mq.addListener(onTheme);
+}
 
 [["f-freeze","freeze","camera freeze"],["f-cam","cam","camera dropout"],
  ["f-depth","depth","depth dropout"],["f-slam","slam","SLAM loss"]].forEach(function(f){
