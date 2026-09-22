@@ -11,6 +11,9 @@ python run_demo.py
 Python 3.8+ and nothing else. `tkinter` ships with Python; if it is missing,
 `--headless` prints the same run to the terminal.
 
+Recording a submission video from this prototype? See
+[DEMO_SCRIPT.md](DEMO_SCRIPT.md).
+
 ---
 
 ## The one thing that matters about this demo
