@@ -52,6 +52,8 @@ Read them in this order.
 | [PRD.md](PRD.md) | What we are building and why; requirements and success criteria |
 | [SPEC.md](SPEC.md) | How it is built: architecture, interfaces, algorithms, budgets |
 | [SETUP.md](SETUP.md) | Machine requirements and the exact install order |
+| [CLOUD_SETUP.md](CLOUD_SETUP.md) | Standing up a cloud GPU instance and running the stack phase by phase |
+| [CLOUD_DEMO_SCRIPT.md](CLOUD_DEMO_SCRIPT.md) | The submission video, shot against the real system on that cloud machine |
 | [TASK.md](TASK.md) | The phased backlog — what to do next, with acceptance criteria |
 | [EVALUATION.md](EVALUATION.md) | Metrics, the test scenario catalog, how we score ourselves |
 | [REFERENCES.md](REFERENCES.md) | Upstream repositories, licences, official documentation |
