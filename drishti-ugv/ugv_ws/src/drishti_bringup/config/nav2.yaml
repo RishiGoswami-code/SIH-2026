@@ -297,3 +297,41 @@ velocity_smoother:
     max_decel: [-2.5, 0.0, -3.2]
     odom_topic: "/odom"
     odom_duration: 0.1
+
+# ===========================================================================
+# collision_monitor -- placeholder config, added 27 Sep 2026.
+#
+# nav2_bringup's navigation_launch.py includes this node unconditionally
+# (Nav2 Jazzy source, ros-navigation/navigation2). Left unconfigured it fails
+# `on_configure()` with "parameter 'observation_sources' is not initialized"
+# and the lifecycle manager aborts the ENTIRE Nav2 bring-up -- this is what
+# broke the first real headless run of Phase 1.
+#
+# DO NOT copy Nav2's own example params verbatim to fix this: its shipped
+# nav2_params.yaml sets `cmd_vel_out_topic: "cmd_vel"`, which would make this
+# node a SECOND publisher on /cmd_vel -- exactly the invariant this file's own
+# header above exists to protect. `ros2 topic info /cmd_vel --verbose` must
+# keep showing exactly one publisher: safety_supervisor.
+#
+# This config is deliberately inert: cmd_vel_in_topic/cmd_vel_out_topic point
+# at placeholder topic names nothing else in this system publishes or
+# subscribes to, and polygons/observation_sources are empty, so the node
+# configures and activates cleanly without monitoring anything or touching
+# any real command topic. Deciding where collision_monitor should actually
+# sit in the pipeline -- if at all, given the safety supervisor already owns
+# every stop decision (SPEC.md 9) -- is a real design choice for the team,
+# not something to leave as a guessed default.
+# ===========================================================================
+collision_monitor:
+  ros__parameters:
+    use_sim_time: true
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "collision_monitor/unused_in"
+    cmd_vel_out_topic: "collision_monitor/unused_out"
+    transform_tolerance: 0.5
+    source_timeout: 5.0
+    stop_pub_timeout: 2.0
+    base_shift_correction: true
+    polygons: []
+    observation_sources: []
