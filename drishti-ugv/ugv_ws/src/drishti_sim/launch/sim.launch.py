@@ -14,7 +14,8 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (
+    LaunchConfiguration, PathJoinSubstitution, PythonExpression)
 
 from launch_ros.actions import Node
 
@@ -28,7 +29,19 @@ def generate_launch_description():
     headless = LaunchConfiguration('headless')
 
     # -r starts the world unpaused; -s is server-only for batch runs (Phase 6).
-    gz_args = ['-r ', PathJoinSubstitution([pkg_sim, 'worlds', world])]
+    #
+    # BUG FOUND 27 Sep 2026, first real headless run: `headless` was declared
+    # as a launch argument and documented as "server only, no GUI" but was
+    # never actually read anywhere in this file -- gz_args always launched
+    # the GUI client regardless of the flag. On a display-less machine (a
+    # GitHub Actions runner, this project's own free-tier CI) that crashed
+    # outright: `qt.qpa.xcb: could not connect to display`. Fixed by actually
+    # conditioning -s on the flag.
+    gz_args = [
+        '-r ',
+        PythonExpression(["'-s ' if '", headless, "' == 'true' else ''"]),
+        PathJoinSubstitution([pkg_sim, 'worlds', world]),
+    ]
 
     return LaunchDescription([
         DeclareLaunchArgument(
