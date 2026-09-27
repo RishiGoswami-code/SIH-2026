@@ -96,7 +96,7 @@ jobs:
           (ros2 launch drishti_bringup bringup.launch.py world:=easy.sdf headless:=true > /tmp/bringup.log 2>&1 &)
           sleep 20
           echo "---- /cmd_vel, should show nonzero motion once Nav2 has a goal ----"
-          timeout 10 ros2 topic echo /cmd_vel -n 5 2>&1 | tee /tmp/cmd_vel_echo.log
+          timeout 10 ros2 topic echo /cmd_vel 2>&1 | tee /tmp/cmd_vel_echo.log
           echo "---- TF tree ----"
           timeout 5 ros2 run tf2_tools view_frames 2>&1 | tee /tmp/tf_frames.log
 
