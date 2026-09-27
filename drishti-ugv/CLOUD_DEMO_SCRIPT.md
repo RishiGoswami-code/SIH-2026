@@ -1,17 +1,23 @@
 # CLOUD_DEMO_SCRIPT — the real system, pre-recorded
 
-A submission video shot against the actual ROS 2 / Gazebo stack running on the
-cloud GPU machine ([CLOUD_SETUP.md](CLOUD_SETUP.md)) — not the HTML prototype.
-Pre-recorded, not live, for the same reason as before: repeatable takes.
+A submission video shot against the actual ROS 2 / Gazebo stack — not the HTML
+prototype. Pre-recorded, not live, for the same reason as before: repeatable
+takes.
 
-> **Read this before scheduling anything.** As of **22 September 2026**, the
-> submission deadline is **30 September 2026** — 8 days. Nothing in this
-> repository has ever been built or executed against real ROS/Gazebo
-> (STATUS.md). This script is only shootable *after* the bring-up in
-> CLOUD_SETUP.md actually succeeds, and that bring-up has known, named risk:
-> `rclcpp` API fixes, the CuPy/CUDA pairing, and unverified `gz` topic names.
-> §1 below is a priority order for burning down that risk against 8 days, not
-> a guarantee every scene is achievable in time.
+> **Update, 27 September 2026 — read this first.** Written when 8 days
+> remained and the plan was AWS. There's no budget for that now — see
+> [FREE_SETUP.md](FREE_SETUP.md) for the free, no-billing-risk bring-up
+> (GitHub Codespaces/Actions instead of AWS) and its own, harder-triaged
+> priority order given only **3 days** remain. Read FREE_SETUP.md's §4
+> before this file's §1 below — it supersedes the ordering here, and it also
+> corrects one wrong command in this file's Scene 4 (see the note there).
+
+> **Original note, 22 September 2026.** Nothing in this repository has ever
+> been built or executed against real ROS/Gazebo (STATUS.md). This script is
+> only shootable *after* a bring-up actually succeeds, and that bring-up has
+> known, named risk: `rclcpp` API fixes, the CuPy/CUDA pairing, and
+> unverified `gz` topic names. §1 below is a priority order for burning down
+> that risk, not a guarantee every scene is achievable in time.
 
 ---
 
@@ -113,14 +119,39 @@ topic echo /odom` or the Nav2 goal-status.
 **Action:** let it reach the goal. Don't cut early — a full, boring, correct
 run is the point.
 
-### Scene 4 — the safety stop (1:30–2:30)
+### Scene 4 — the safety stop
 
-**On screen:** same view, plus a terminal on `/safety/state`.
+**Two versions — use whichever you actually got running; see
+[FREE_SETUP.md](FREE_SETUP.md) §4 for why the first is the safer bet with 3
+days left.**
+
+**4a — the standalone stop (lower risk, needs only the supervisor compiling):**
 
 ```bash
-ros2 run drishti_eval fault_injector --fault camera_freeze
+ros2 launch drishti_bringup safety.launch.py
 ros2 topic echo /safety/state
 ```
+
+**Say:**
+> "With nothing feeding it — no simulator, no perception yet — the supervisor
+> holds zero velocity from the very first tick. That's not a bug, it's the
+> design: loss of input is a stop condition, not 'probably fine'."
+
+**Action:** show whatever `reason` it actually reports first — don't script a
+specific one in advance; read it off the real output.
+
+**4b — the frozen-camera fault (stretch — needs the injector's `raw_` prefix
+bridge wiring, which isn't in `safety.launch.py` as shipped; confirm it's
+actually wired before planning to shoot this):**
+
+```bash
+ros2 run drishti_eval fault_injector --ros-args -p scenario:=T16_camera_freeze
+ros2 topic echo /safety/state
+```
+
+Note the corrected command — the scenario is a ROS **parameter**
+(`-p scenario:=...`), not a `--fault` command-line flag; that flag doesn't
+exist.
 
 **Say:**
 > "Now we break something on purpose. The camera keeps publishing — fresh
