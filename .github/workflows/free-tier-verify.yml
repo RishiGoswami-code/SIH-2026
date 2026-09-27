@@ -53,7 +53,7 @@ jobs:
           colcon build --symlink-install
 
       - name: Phase 0 -- offline checks (no ROS, ~5000 assertions)
-        working-directory: drishti-ugv
+        working-directory: drishti-ugv/ugv_ws
         run: |
           python3 tools/run_checks.py
 
