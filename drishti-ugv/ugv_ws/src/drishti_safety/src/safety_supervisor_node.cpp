@@ -17,6 +17,7 @@
 // tests ARE verified. Expect to fix small API details here on the first real
 // colcon build.
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -178,6 +179,7 @@ private:
       in.last_rgb_stamp = rclcpp::Time(last_health_.last_rgb_stamp).seconds();
       in.last_depth_stamp = rclcpp::Time(last_health_.last_depth_stamp).seconds();
       in.perception_confidence = last_health_.mean_confidence;
+      in.rgb_static_for = last_health_.rgb_static_for;
     }  // otherwise both stay at kNever -> stale -> STOP
 
     in.pose_valid = (t - pose_rx_) <= t_pose_stale_;
@@ -252,12 +254,22 @@ private:
     }
   }
 
-  SupervisorCore core_;
-
+  // Declared before core_ deliberately: core_'s mem-initializer calls
+  // load_params(), which assigns these three via declare_parameter(). C++
+  // initializes members in declaration order regardless of the constructor
+  // initializer-list order, so if these were declared after core_, their own
+  // in-class default initializers ({2.0}, {0.5}, {0.5}) would run right after
+  // load_params() and silently clobber whatever value it just assigned --
+  // any params.yaml override of t_plan_stale/t_cmd_stale/t_pose_stale would
+  // then be discarded with no error. Declaring them first means their
+  // defaults apply BEFORE load_params() runs, so its assignment is the one
+  // that sticks.
   bool use_twist_stamped_{false};
   double t_plan_stale_{2.0};
   double t_cmd_stale_{0.5};
   double t_pose_stale_{0.5};
+
+  SupervisorCore core_;
 
   drishti_msgs::msg::PerceptionHealth last_health_;
   double last_health_rx_{kNever};
