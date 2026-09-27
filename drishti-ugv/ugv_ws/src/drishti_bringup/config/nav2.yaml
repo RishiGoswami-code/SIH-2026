@@ -334,4 +334,20 @@ collision_monitor:
     stop_pub_timeout: 2.0
     base_shift_correction: true
     polygons: []
-    observation_sources: []
+    # An empty list here was tried first and made things worse: it crashed
+    # the node outright (rclcpp::exceptions::InvalidParameterValueException,
+    # "No parameter value set") instead of cleanly failing to configure, and
+    # left the lifecycle manager hung waiting forever for a service call that
+    # would never come back. observation_sources apparently must be a real,
+    # non-empty, correctly-typed list -- so this points at a placeholder
+    # PointCloud2 topic nothing publishes to. It will simply always read as
+    # timed-out (no data), contributing no obstacle information -- still
+    # inert, but validly typed instead of relying on empty-list parsing that
+    # already proved unreliable.
+    observation_sources: ["placeholder_source"]
+    placeholder_source:
+      type: "pointcloud"
+      topic: "collision_monitor/unused_points"
+      min_height: 0.0
+      max_height: 3.0
+      enabled: true
